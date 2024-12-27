@@ -1,0 +1,15 @@
+# I had some help with this file from https://git-scm.com/docs/gitignore.
+
+# Exclude these executable files
+/c/copied/client
+/c/copied/server
+/c/normal/c_main
+/cpp/gen/input/cpp_gen_main
+/cpp/normal/cpp_main
+
+# Exclude all .o files
+*.o
+
+# Exclude these directories
+/cpp/gen/output
+/.vscode

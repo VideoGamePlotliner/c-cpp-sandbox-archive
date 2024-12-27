@@ -1,0 +1,22 @@
+# This file is apparently from
+# https://github.com/actions/starter-workflows/blob/f90b59f7cd6c78cb77ba8274dd8b01499074948b/ci/c-cpp.yml
+
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: make
+      run: make
+    - name: make clean
+      run: make clean
