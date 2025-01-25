@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <cassert>
+#include <utility>
 #include "../gen/output/cpp_gen_trie.hpp"
 
 //
@@ -39,59 +40,63 @@ private:
     {
     private:
         // https://en.cppreference.com/w/cpp/container/map
-        class TrieNodeChildren final
-        {
-        private:
-            std::map<char, TrieNode> children;
-
-        public:
-            // https://en.cppreference.com/w/cpp/container/map/find
-            auto find(char c) const noexcept { return children.find(c); }
-
-            // https://en.cppreference.com/w/cpp/container/map/end
-            auto end() const noexcept { return children.end(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/end
-            auto end() noexcept { return children.end(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/at
-            const TrieNode &at(char c) const { return children.at(c); }
-
-            // https://en.cppreference.com/w/cpp/container/map/at
-            TrieNode &at(char c) { return children.at(c); }
-
-            // https://en.cppreference.com/w/cpp/container/map/empty
-            bool empty() const noexcept { return children.empty(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/begin
-            auto begin() const noexcept { return children.begin(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/begin
-            auto begin() noexcept { return children.begin(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/clear
-            void clear() noexcept { children.clear(); }
-
-            // https://en.cppreference.com/w/cpp/container/map/insert
-            auto insert(const std::pair<char, TrieNode> &pair) noexcept { return children.insert(pair); }
-
-            // https://en.cppreference.com/w/cpp/container/map/size
-            auto size() const noexcept { return children.size(); }
-        };
+        // https://en.cppreference.com/w/cpp/container/map/find
+        // https://en.cppreference.com/w/cpp/container/map/end
+        // https://en.cppreference.com/w/cpp/container/map/at
+        // https://en.cppreference.com/w/cpp/container/map/empty
+        // https://en.cppreference.com/w/cpp/container/map/begin
+        // https://en.cppreference.com/w/cpp/container/map/clear
+        // https://en.cppreference.com/w/cpp/container/map/insert
+        // https://en.cppreference.com/w/cpp/container/map/size
+        // https://en.cppreference.com/w/cpp/container/map/erase
+        // https://en.cppreference.com/w/cpp/utility/pair/make_pair
 
     private:
         // Is this node the final node of a string in this trie?
         bool is_final_node = false;
 
         // The list of child nodes and the characters they correspond to
-        // std::map<char, TrieNode> children;
-        TrieNodeChildren children;
+        std::map<char, TrieNode *> children;
 
     public:
-        bool is_final() const noexcept { return is_final_node; }
-        bool has_child_at(char c) const noexcept { return children.find(c) != children.end(); }
-        const TrieNode &child_at(char c) const { return children.at(c); }
-        bool children_empty() const { return children.empty(); }
+        TrieNode() = default;
+        TrieNode(const TrieNode &other) { *this = other; }
+        ~TrieNode() { clear(); }
+        TrieNode &operator=(const TrieNode &other)
+        {
+            if (this != &other)
+            {
+                clear();
+
+                is_final_node = other.is_final_node;
+
+                for (auto &&pair : other.children)
+                {
+                    char c = pair.first;
+                    const TrieNode *child = pair.second;
+                    if (child)
+                    {
+                        assert(insert_child_at(c, new TrieNode(*child)));
+                    }
+                    else
+                    {
+                        assert(insert_child_at(c, nullptr));
+                    }
+                }
+            }
+            return *this;
+        };
+
+    public:
+        bool is_final() const { return is_final_node; }
+        void mark_as_final() { is_final_node = true; }
+        void mark_as_non_final() { is_final_node = false; }
+        bool has_child_at(char c) const { return children.find(c) != children.end(); }
+        TrieNode *child_at(char c) { return children.at(c); }
+        const TrieNode *child_at(char c) const { return children.at(c); }
+        bool has_no_children() const { return children.empty(); }
+        bool insert_child_at(char c, TrieNode *new_child) { return children.insert(std::make_pair(c, new_child)).second; }
+        bool erase_child_at(char c) { return static_cast<bool>(children.erase(c)); }
 
     public:
         // The 'bool' part of the return value is whether this node has any
@@ -100,16 +105,15 @@ private:
         // and irrelevant.
         std::pair<char, bool> character_of_first_non_empty_child() const
         {
-            // MUST TEST
-
             for (auto &&pair : children)
             {
-                if (!pair.second.empty())
+                if (pair.second && !pair.second->empty())
                 {
-                    return {pair.first, true};
+                    char c = pair.first;
+                    return std::make_pair(c, true);
                 }
             }
-            return {0, false};
+            return std::make_pair(0, false);
         }
 
         // The 'bool' part of the return value is whether this node has at
@@ -119,118 +123,82 @@ private:
         // irrelevant.
         std::pair<char, bool> character_of_next_non_empty_child(char infimum) const
         {
-            // MUST TEST
-
             for (auto &&pair : children)
             {
-                if (pair.first > infimum && !pair.second.empty())
+                char c = pair.first;
+                if (c > infimum && pair.second && !pair.second->empty())
                 {
-                    return {pair.first, true};
+                    return std::make_pair(c, true);
                 }
             }
-            return {0, false};
-        }
-
-    public:
-        // https://en.cppreference.com/w/cpp/utility/pair
-        // https://en.cppreference.com/w/cpp/utility/pair/make_pair
-        // https://en.cppreference.com/w/cpp/container/map/find
-        // https://en.cppreference.com/w/cpp/container/map/insert
-        // https://en.cppreference.com/w/cpp/container/map/at
-        // https://en.cppreference.com/w/cpp/language/initialization
-        void insert(const std::string &s) noexcept
-        {
-            // MUST RE-TEST
-
-            if (s.empty())
-            {
-                is_final_node = true;
-            }
-            else
-            {
-                char c = s.at(0);
-                if (children.find(c) == children.end())
-                {
-                    children.insert({c, {}});
-                }
-                children.at(c).insert(s.substr(1));
-            }
-        }
-
-        // https://en.cppreference.com/w/cpp/container/set/erase
-        // void erase(const std::string &s) noexcept
-        // {
-        //     throw std::logic_error(__PRETTY_FUNCTION__);
-        // }
-
-        // https://en.cppreference.com/w/cpp/container/set/clear
-        void clear() noexcept
-        {
-            // MUST RE-TEST
-
-            is_final_node = false;
-            for (auto &&pair : children)
-            {
-                pair.second.clear();
-            }
-            children.clear();
+            return std::make_pair(0, false);
         }
 
         // https://en.cppreference.com/w/cpp/container/set/size
-        // https://en.cppreference.com/w/cpp/types/size_t
-        // https://en.cppreference.com/w/cpp/container/map/size
-        std::size_t size() const noexcept
+        // 'size_type' in https://en.cppreference.com/w/cpp/container/set
+        std::size_t size() const
         {
-            // MUST RE-TEST
-
             std::size_t size_so_far = (is_final_node ? 1 : 0);
             for (auto &&pair : children)
             {
-                size_so_far += pair.second.size();
+                if (pair.second)
+                {
+                    size_so_far += pair.second->size();
+                }
             }
             return size_so_far;
         }
 
-        // https://en.cppreference.com/w/cpp/container/set/empty
-        bool empty() const noexcept
-        {
-            // MUST RE-TEST
+        // If this TrieNode both is non-final and has zero non-empty
+        // children, return true. Otherwise, return false.
+        bool empty() const { return !is_final_node && !character_of_first_non_empty_child().second; }
 
-            if (is_final_node)
-            {
-                return false;
-            }
+        // https://en.cppreference.com/w/cpp/container/set/clear
+        void clear()
+        {
+            is_final_node = false;
+
             for (auto &&pair : children)
             {
-                if (!pair.second.empty())
+                TrieNode *child = pair.second;
+                pair.second = nullptr;
+                if (child)
                 {
-                    return false;
+                    child->clear();
+                    assert(child->has_no_children());
+                    delete child;
                 }
             }
-            return true;
+            children.clear();
         }
 
-    public:
         // https://en.cppreference.com/w/cpp/language/operators
         // "Stream extraction and insertion" section
-        std::ostream &operator_os(std::ostream &os) const noexcept
+        std::ostream &operator_os(std::ostream &os) const
         {
-            // MUST RE-TEST
-
             os << (is_final_node ? "{true,{" : "{false,{");
-            auto num_children = children.size();
-            int i = 0;
+
+            bool first_pair = true;
+
             for (auto &&pair : children)
             {
-                os << '{' << CHAR_TO_STRING_LITERAL(pair.first) << ',';
+                char c = pair.first;
+                os << '{' << CHAR_TO_STRING_LITERAL(c) << ',';
 
-                pair.second.operator_os(os) << '}';
+                if (pair.second)
+                {
+                    pair.second->operator_os(os) << '}';
+                }
+                else
+                {
+                    os << "nullptr}";
+                }
 
-                if (i < num_children - 1)
+                if (!first_pair)
                 {
                     os << ',';
                 }
-                i++;
+                first_pair = false;
             }
             return os << "}}";
         }
@@ -248,240 +216,275 @@ private:
     class TrieConstIterator final
     {
     private:
-        // v.empty() means *this == trie.end()
-        // If !v.empty(), then v.at(0).first is meaningless and irrelevant, but v.at(0).first should be zero.
-        std::vector<std::pair<char, TrieNode>> v;
+        // The return value of *(*this) -- unless at_end is true.
+        std::string s;
 
-    private:
-        // Throws std::out_of_range if v.empty()
-        void depth_first_search_for_final_node(const bool check_whether_final_before_moving_down)
-        {
-            // MUST TEST
+        // Equal to &trie.root; not equal to nullptr.
+        const TrieNode *const root;
 
-            if (v.empty())
-            {
-                throw std::out_of_range(__PRETTY_FUNCTION__);
-            }
-
-            std::pair<char, bool> pair{0, true};
-            while (pair.second)
-            {
-                if (check_whether_final_before_moving_down)
-                {
-                    if (v_back().second.is_final())
-                    {
-                        break;
-                    }
-                }
-                pair = v_back().second.character_of_first_non_empty_child();
-                if (pair.second)
-                {
-                    char c = pair.first;
-                    assert(v_back().second.has_child_at(c));
-                    const TrieNode &child = v_back().second.child_at(c);
-                    v.push_back({c, child});
-                }
-                if (!check_whether_final_before_moving_down)
-                {
-                    if (v_back().second.is_final())
-                    {
-                        break;
-                    }
-                }
-            }
-            assert(v_back().second.is_final());
-        }
-
-        // Throws std::out_of_range if v.empty()
-        const std::pair<char, TrieNode> &v_back() const
-        {
-            if (v.empty())
-            {
-                throw std::out_of_range(__PRETTY_FUNCTION__);
-            }
-            return v.at(v.size() - 1);
-        }
+        // Does this TrieConstIterator equal trie.end()?
+        bool at_end = false;
 
     public:
-        // Used for trie.end()
-        TrieConstIterator() = default;
-
-        // Used for trie.begin()
-        TrieConstIterator(const TrieNode &root)
+        // If str is absent from root's trie, then s initially equals "",
+        // at_end initially equals true, and *this initially equals trie.end().
+        TrieConstIterator(const std::string &str, const TrieNode &root_node, bool starting_at_end) : s(str), root(&root_node), at_end(starting_at_end)
         {
-            // MUST TEST
-
-            assert(root.empty() ^ root.character_of_first_non_empty_child().second);
-
-            if (!root.character_of_first_non_empty_child().second)
+            if (at_end)
             {
-                return;
+                assert(s.empty());
             }
-
-            v.push_back({0, root});
-
-            if (root.is_final())
+            else if (s.empty())
             {
-                // Trie contains ""
-                return;
+                // Root's trie contains "" if and only if root->is_final()
+                at_end = !root->is_final();
             }
-
-            depth_first_search_for_final_node(true);
-        }
-
-        // If s is absent from root's trie, then *this initially equals trie.end()
-        TrieConstIterator(const TrieNode &root, const std::string &s)
-        {
-            // MUST RE-TEST
-
-            // HANDLE whenever trie contains "" and/or s is ""
-            if (s.empty())
+            else
             {
-                if (root.is_final())
+                const TrieNode *node = root;
+
+                for (char c : s)
                 {
-                    // Trie contains ""
-                    // this->v should not be empty
-                    v.push_back({0, root});
-                    return;
+                    if (node && node->has_child_at(c))
+                    {
+                        node = node->child_at(c);
+                    }
+                    else
+                    {
+                        // s is absent from root's trie, so *this initially equals trie.end()
+                        at_end = true;
+                        break;
+                    }
+                }
+
+                if (at_end)
+                {
+                    // s is absent from root's trie, so *this initially equals trie.end()
+                    s.clear();
+                }
+                else if (node && node->is_final())
+                {
+                    // s is present in root's trie, so *this does not initially equal trie.end()
+                    at_end = false;
                 }
                 else
                 {
-                    // Trie does not contain ""
-                    // this->v should remain empty
-                    return;
+                    // s is absent from root's trie, so *this initially equals trie.end()
+                    at_end = true;
                 }
-            }
 
-            std::vector<std::pair<char, TrieNode>> pairs;
-
-            const TrieNode *node = &root;
-
-            for (char c : s)
-            {
-                if (!node->has_child_at(c))
+                if (at_end)
                 {
                     // s is absent from root's trie, so *this initially equals trie.end()
-                    pairs.clear();
-                    break;
-                }
-                node = &node->child_at(c);
-                pairs.push_back({c, *node});
-            }
-
-            if (!pairs.empty())
-            {
-                if (!pairs.back().second.is_final())
-                {
-                    // s is absent from root's trie, so *this initially equals trie.end()
-                    pairs.clear();
+                    s.clear();
                 }
             }
-
-            for (auto &&pair : pairs)
-            {
-                v.push_back(pair);
-            }
+            assert(root);
         }
 
     public:
-        bool operator==(const TrieConstIterator &other) const noexcept
+        bool operator==(const TrieConstIterator &other) const { return (at_end == other.at_end) && (s == other.s) && (root == other.root); }
+
+        bool operator!=(const TrieConstIterator &other) const { return !((*this) == other); }
+
+    private:
+        // The same logic as trie.find(s) != trie.end()
+        bool root_contains_s() const
         {
-            // MUST TEST
-
-            if (v.empty() || other.v.empty())
-            {
-                return v.empty() == other.v.empty();
-            }
-            return *(*this) == *other;
-        }
-
-        bool operator!=(const TrieConstIterator &other) const noexcept
-        {
-            // MUST TEST
-
-            if (v.empty() || other.v.empty())
-            {
-                return v.empty() != other.v.empty();
-            }
-            return *(*this) != *other;
+            TrieConstIterator other(s, *root, false);
+            return !other.at_end;
         }
 
     public:
-        // Throws std::out_of_range if v.empty()
+        // https://en.cppreference.com/w/cpp/error/out_of_range
+        // Will throw std::out_of_range if and only if at_end is true
+        const std::string &operator*() const
+        {
+            if (at_end)
+            {
+                throw std::out_of_range(__PRETTY_FUNCTION__);
+            }
+            assert(root_contains_s());
+            return s;
+        }
+
+        // https://en.cppreference.com/w/cpp/error/out_of_range
+        // Will throw std::out_of_range if and only if at_end is true right before this function is called
         TrieConstIterator &operator++()
         {
-            // MUST RE-TEST
-
-            if (v.empty())
+            if (at_end)
             {
                 throw std::out_of_range(__PRETTY_FUNCTION__);
             }
 
-            assert(v_back().second.is_final());
+            assert(root_contains_s());
 
-            if (!v_back().second.empty() && !v_back().second.children_empty())
+            // IMPORTANT EDGE CASE: trie only contains ""
+            if (root->size() == 1 && s.empty() && root->is_final())
             {
-                depth_first_search_for_final_node(false);
+                at_end = true;
                 return *this;
             }
 
-            while (!v.empty())
-            {
-                char c1 = v_back().first;
-                v.pop_back();
-                if (!v.empty())
-                {
-                    std::pair<char, bool> pair = v_back().second.character_of_next_non_empty_child(c1);
-                    char c2 = pair.first;
-                    if (pair.second)
-                    {
-                        assert(v_back().second.has_child_at(c1));
-                        assert(v_back().second.has_child_at(c2));
-                        const TrieNode &child = v_back().second.child_at(c2);
-                        v.push_back({c2, child});
+            const std::string s_before_change = s;
+            std::vector<const TrieNode *> node_stack;
 
-                        depth_first_search_for_final_node(true);
+            // Set up the node stack.
+            node_stack.push_back(root);
+            for (char c : s)
+            {
+                if (!node_stack.empty() && v_back(node_stack) && v_back(node_stack)->has_child_at(c))
+                {
+                    node_stack.push_back(v_back(node_stack)->child_at(c));
+                }
+            }
+
+            assert(!node_stack.empty());
+
+            if (v_back(node_stack))
+            {
+                assert(v_back(node_stack)->is_final());
+            }
+
+            // Try to move as far down as possible.
+            bool has_moved_at_all_yet = false;
+            while (!node_stack.empty() && v_back(node_stack) && (!has_moved_at_all_yet || s == s_before_change || !v_back(node_stack)->is_final()))
+            {
+                std::pair<char, bool> pair = v_back(node_stack)->character_of_first_non_empty_child();
+                if (!pair.second)
+                {
+                    // Can't move down. Try to move right one step.
+                    bool has_moved_right_yet = false;
+                    while (!has_moved_right_yet && !s.empty() && node_stack.size() > 1)
+                    {
+                        char infimum = s_back();
+                        std::pair<char, bool> pair_next = v_penultimate(node_stack)->character_of_next_non_empty_child(infimum);
+                        if (!pair_next.second)
+                        {
+                            // Can't move right. Move up one step.
+                            s_pop_back();
+                            v_pop_back(node_stack);
+                            has_moved_at_all_yet = true;
+                        }
+                        else
+                        {
+                            // Move right one step.
+                            char c_next = pair_next.first;
+                            s_back() = c_next;
+                            v_pop_back(node_stack);
+                            node_stack.push_back(v_back(node_stack)->child_at(c_next));
+                            has_moved_right_yet = true;
+                            has_moved_at_all_yet = true;
+                        }
+                    }
+
+                    if (!at_end && s.empty() && node_stack.size() == 1 && v_back(node_stack) == root)
+                    {
+                        at_end = true;
                         return *this;
                     }
                 }
+                else
+                {
+                    // Move down one step.
+                    char c = pair.first;
+                    s += c;
+                    node_stack.push_back(v_back(node_stack)->child_at(c));
+                    has_moved_at_all_yet = true;
+                }
             }
+
+            assert(!node_stack.empty());
+            assert((v_back(node_stack) && !v_back(node_stack)->is_final()) == at_end);
 
             return *this;
         }
 
-        std::string operator*() const
+    private:
+        // https://en.cppreference.com/w/cpp/string/basic_string/back
+        // https://en.cppreference.com/w/cpp/error/out_of_range
+        // Will throw std::out_of_range if and only if s is empty
+        char &s_back()
         {
-            // MUST RE-TEST
+            if (s.empty())
+            {
+                throw std::out_of_range(__PRETTY_FUNCTION__);
+            }
+            return s.at(s.size() - 1);
+        }
 
-            if (v.empty())
+        // https://en.cppreference.com/w/cpp/string/basic_string/pop_back
+        // https://en.cppreference.com/w/cpp/error/out_of_range
+        // Will throw std::out_of_range if and only if s is empty
+        void s_pop_back()
+        {
+            if (s.empty())
             {
-                throw std::out_of_range(std::string("Scenario 1 in ") + __PRETTY_FUNCTION__);
+                throw std::out_of_range(__PRETTY_FUNCTION__);
             }
-            if (v.size() == 1)
-            {
-                if (v.at(0).second.is_final())
-                {
-                    return "";
-                }
-                else
-                {
-                    throw std::out_of_range(std::string("Scenario 2 in ") + __PRETTY_FUNCTION__);
-                }
-            }
-            std::string s;
-            bool first_pair = true;
-            for (auto &&pair : v)
-            {
-                if (!first_pair)
-                {
-
-                    s += pair.first;
-                }
-                first_pair = false;
-            }
-            return s;
+            s.pop_back();
         }
     };
+
+private:
+    // https://en.cppreference.com/w/cpp/container/vector/pop_back
+    // https://en.cppreference.com/w/cpp/error/out_of_range
+    // Will throw std::out_of_range if and only if v is empty
+    static void v_pop_back(std::vector<TrieNode *> &v)
+    {
+        if (v.empty())
+        {
+            throw std::out_of_range(__PRETTY_FUNCTION__);
+        }
+        v.pop_back();
+    }
+
+    // https://en.cppreference.com/w/cpp/container/vector/pop_back
+    // https://en.cppreference.com/w/cpp/error/out_of_range
+    // Will throw std::out_of_range if and only if v is empty
+    static void v_pop_back(std::vector<const TrieNode *> &v)
+    {
+        if (v.empty())
+        {
+            throw std::out_of_range(__PRETTY_FUNCTION__);
+        }
+        v.pop_back();
+    }
+
+    // https://en.cppreference.com/w/cpp/container/vector/back
+    // https://en.cppreference.com/w/cpp/error/out_of_range
+    // Will throw std::out_of_range if and only if v is empty
+    static TrieNode *v_back(const std::vector<TrieNode *> &v)
+    {
+        if (v.empty())
+        {
+            throw std::out_of_range(__PRETTY_FUNCTION__);
+        }
+        return v.at(v.size() - 1);
+    }
+
+    // https://en.cppreference.com/w/cpp/container/vector/back
+    // https://en.cppreference.com/w/cpp/error/out_of_range
+    // Will throw std::out_of_range if and only if v is empty
+    static const TrieNode *v_back(const std::vector<const TrieNode *> &v)
+    {
+        if (v.empty())
+        {
+            throw std::out_of_range(__PRETTY_FUNCTION__);
+        }
+        return v.at(v.size() - 1);
+    }
+
+    // https://en.cppreference.com/w/cpp/error/out_of_range
+    // Will throw std::out_of_range if and only if v.size() < 2
+    static const TrieNode *v_penultimate(const std::vector<const TrieNode *> &v)
+    {
+        if (v.size() < 2)
+        {
+            throw std::out_of_range(__PRETTY_FUNCTION__);
+        }
+        return v.at(v.size() - 2);
+    }
 
 private:
     TrieNode root;
@@ -493,112 +496,151 @@ public:
     // https://en.cppreference.com/w/cpp/container/map/insert
     // https://en.cppreference.com/w/cpp/container/map/at
     // https://en.cppreference.com/w/cpp/language/initialization
-    std::pair<TrieConstIterator, bool> insert(const std::string &s) noexcept
+    // https://en.cppreference.com/w/cpp/container/set/insert
+    // If insertion takes place, the 'bool' part of the return value is true. Otherwise, return false.
+    std::pair<TrieConstIterator, bool> insert(const std::string &s)
     {
-        // MUST RE-TEST
+        bool should_insert = (find(s) == end());
 
-        bool already_inserted = (find(s) != end());
-
-        // DON'T FORGET THIS EXCLAMATION POINT.
-        if (!already_inserted)
+        if (/* DON'T INCLUDE AN EXCLAMATION POINT HERE */ should_insert)
         {
-            root.insert(s);
+            TrieNode *node = &root;
+            for (char c : s)
+            {
+                if (node && !node->has_child_at(c))
+                {
+                    assert(node->insert_child_at(c, new TrieNode));
+                }
+                if (node)
+                {
+                    node = node->child_at(c);
+                }
+            }
+            if (node)
+            {
+                node->mark_as_final();
+            }
+            else
+            {
+                should_insert = false;
+            }
         }
 
-        return {find(s), already_inserted};
+        return std::make_pair(find(s), should_insert);
     }
 
     // https://en.cppreference.com/w/cpp/container/set/erase
-    bool erase(const std::string &s) noexcept
+    // If erasure takes place, return true. Otherwise, return false.
+    bool erase(const std::string &s)
     {
-        // MUST RE-TEST
+        bool should_erase = (find(s) != end());
 
-        bool already_inserted = (find(s) != end());
-
-        // DON'T INCLUDE AN EXCLAMATION POINT.
-        if (already_inserted)
+        if (should_erase)
         {
-            // root.erase(s);
-
-            // Find faster way to do this:
-            std::set<std::string> set;
-
-            for (std::string str : *this)
+            if (s.empty())
             {
-                set.insert(str);
+                root.mark_as_non_final();
             }
-            set.erase(s);
-            clear();
-            for (std::string str : set)
+            else
             {
-                insert(str);
+                std::vector<TrieNode *> node_stack;
+
+                // Set up the node stack.
+                node_stack.push_back(&root);
+                for (char c : s)
+                {
+                    if (!node_stack.empty() && v_back(node_stack) && v_back(node_stack)->has_child_at(c))
+                    {
+                        node_stack.push_back(v_back(node_stack)->child_at(c));
+                    }
+                }
+
+                assert(node_stack.size() > 1);
+
+                if (v_back(node_stack))
+                {
+                    assert(v_back(node_stack)->is_final());
+
+                    if (v_back(node_stack)->has_no_children())
+                    {
+                        int i = s.length() - 1;
+                        do
+                        {
+                            const TrieNode *old_back = v_back(node_stack);
+                            v_pop_back(node_stack);
+                            TrieNode *new_back = v_back(node_stack);
+                            if (new_back)
+                            {
+                                char c = s.at(i);
+                                assert(new_back->erase_child_at(c));
+                            }
+                            if (old_back)
+                            {
+                                assert(old_back->has_no_children());
+                                delete old_back;
+                            }
+                            i--;
+                        } while (node_stack.size() > 1 && v_back(node_stack) && !v_back(node_stack)->is_final() && v_back(node_stack)->has_no_children());
+                    }
+                    else
+                    {
+                        v_back(node_stack)->mark_as_non_final();
+                    }
+                }
+                else
+                {
+                    should_erase = false;
+                }
             }
         }
-
-        // DON'T FORGET THIS EXCLAMATION POINT.
-        return !already_inserted;
+        return should_erase;
     }
 
     // https://en.cppreference.com/w/cpp/container/set/clear
-    void clear() noexcept { root.clear(); }
+    void clear() { root.clear(); }
 
     // https://en.cppreference.com/w/cpp/container/set/size
-    auto size() const noexcept { return root.size(); }
+    // 'size_type' in https://en.cppreference.com/w/cpp/container/set
+    std::size_t size() const { return root.size(); }
 
     // https://en.cppreference.com/w/cpp/container/set/empty
-    bool empty() const noexcept { return root.empty(); }
+    bool empty() const { return root.empty(); }
 
 public:
     // https://en.cppreference.com/w/cpp/container/set/find
-    TrieConstIterator find(const std::string &s) const noexcept { return {root, s}; }
+    // If s is absent from this trie, return trie.end().
+    TrieConstIterator find(const std::string &s) const { return TrieConstIterator(s, root, false); }
 
     // https://en.cppreference.com/w/cpp/language/range-for
     // https://en.cppreference.com/w/cpp/container/set/begin
     // https://en.cppreference.com/w/cpp/language/member_functions#Member_functions_with_cv-qualifiers
-    TrieConstIterator begin() const noexcept { return {root}; }
+    TrieConstIterator begin() const
+    {
+        std::string s;
+        const TrieNode *node = &root;
+        while (node && !node->is_final())
+        {
+            std::pair<char, bool> pair = node->character_of_first_non_empty_child();
+            if (!pair.second)
+            {
+                return end();
+            }
+            char c = pair.first;
+            s += c;
+            node = node->child_at(c);
+        }
+        return find(s);
+    }
 
     // https://en.cppreference.com/w/cpp/language/range-for
     // https://en.cppreference.com/w/cpp/container/set/end
     // https://en.cppreference.com/w/cpp/language/member_functions#Member_functions_with_cv-qualifiers
-    TrieConstIterator end() const noexcept { return {}; }
+    TrieConstIterator end() const { return TrieConstIterator("", root, true); }
 
 public:
     // https://en.cppreference.com/w/cpp/language/operators
     // "Stream extraction and insertion" section
-    std::ostream &operator_os(std::ostream &os) const noexcept { return root.operator_os(os << '{') << '}'; }
+    std::ostream &operator_os(std::ostream &os) const { return root.operator_os(os << '{') << '}'; }
 };
-
-#ifndef TRIE_ASSERTS
-#define TRIE_ASSERTS
-
-#define ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t) assert(t.empty() == (t.size() == 0))
-#define ASSERT_TRIE_EMPTY(t) assert(t.empty())
-#define ASSERT_TRIE_SIZE_IS(t, expected_size) assert(t.size() == expected_size)
-#define ASSERT_TRIE_CONTAINS_STRING(t, s) assert(t.find(s) != t.end())
-#define ASSERT_TRIE_DOES_NOT_CONTAIN_STRING(t, s) assert(t.find(s) == t.end())
-
-#define TRIE_INSERT_AND_ASSERT(t, s)                     \
-    ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t); \
-    if (t.find(s) == t.end())                            \
-        assert(!t.insert(s).second);                     \
-    else                                                 \
-        assert(t.insert(s).second);                      \
-    ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t); \
-    ASSERT_TRIE_CONTAINS_STRING(t, s)
-
-#define TRIE_ERASE_AND_ASSERT(t, s)                      \
-    ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t); \
-    if (t.find(s) == t.end())                            \
-        assert(t.erase(s));                              \
-    else                                                 \
-        assert(!t.erase(s));                             \
-    ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t); \
-    ASSERT_TRIE_DOES_NOT_CONTAIN_STRING(t, s)
-
-#define TRIE_EMPTY_AND_ASSERT(t)                         \
-    ASSERT_TRIE_IS_EMPTY_IF_AND_ONLY_IF_SIZE_IS_ZERO(t); \
-    ASSERT_TRIE_EMPTY(t)
-
-#endif // TRIE_ASSERTS
 
 #endif // SANDBOX_CPP_TRIE

@@ -1,5 +1,8 @@
 // Adapted from the "File server.c" section of https://www.man7.org/linux/man-pages/man7/unix.7.html
 
+#ifndef SANDBOX_CPP_MAN7_SERVER
+#define SANDBOX_CPP_MAN7_SERVER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +13,18 @@
 
 #include "man7_connection.hpp"
 
+#include <string>
+#include <stdexcept>
+
+// https://www.man7.org/linux/man-pages/man3/unlink.3p.html
+// Don't change errno.
+static void unlink_without_changing_errno(const char *path)
+{
+    int errnum = errno;
+    unlink(path);
+    errno = errnum;
+}
+
 int man7_server_main(void)
 {
     int down_flag = 0;
@@ -18,16 +33,23 @@ int man7_server_main(void)
     int data_socket;
     int result;
     ssize_t r, w;
-    struct sockaddr_un name;
+    sockaddr_un name;
     char buffer[BUFFER_SIZE];
+
+    int errnum = 0;
 
     /* Create local socket. */
 
+    errno = 0;
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    errnum = errno;
+    write_function_results(__func__, "socket", connection_socket, errnum);
+
     if (connection_socket == -1)
     {
-        perror("socket");
-        unlink(SOCKET_NAME);
+        // ACCORDING TO THE "Notes" SECTION OF
+        // https://www.man7.org/linux/man-pages/man7/unix.7.html
+        // USE unlink() AFTER bind(), NOT BEFORE IT.
         return 1;
     }
 
@@ -43,14 +65,17 @@ int man7_server_main(void)
 
     name.sun_family = AF_UNIX;
     strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
+    name.sun_path[sizeof(name.sun_path) - 1] = 0;
 
-    ret = bind(connection_socket, (const struct sockaddr *)&name,
-               sizeof(name));
+    errno = 0;
+    ret = bind(connection_socket, (const sockaddr *)&name, sizeof(name));
+    errnum = errno;
+    write_function_results(__func__, "bind", ret, errnum);
+
     if (ret == -1)
     {
-        perror("bind");
-        close(connection_socket);
-        unlink(SOCKET_NAME);
+        close_without_changing_errno(connection_socket);
+        unlink_without_changing_errno(SOCKET_NAME);
         return 2;
     }
 
@@ -60,12 +85,15 @@ int man7_server_main(void)
      * can be waiting.
      */
 
+    errno = 0;
     ret = listen(connection_socket, 20);
+    errnum = errno;
+    write_function_results(__func__, "listen", ret, errnum);
+
     if (ret == -1)
     {
-        perror("listen");
-        close(connection_socket);
-        unlink(SOCKET_NAME);
+        close_without_changing_errno(connection_socket);
+        unlink_without_changing_errno(SOCKET_NAME);
         return 3;
     }
 
@@ -76,12 +104,15 @@ int man7_server_main(void)
 
         /* Wait for incoming connection. */
 
+        errno = 0;
         data_socket = accept(connection_socket, NULL, NULL);
+        errnum = errno;
+        write_function_results(__func__, "accept", data_socket, errnum);
+
         if (data_socket == -1)
         {
-            perror("accept");
-            close(connection_socket);
-            unlink(SOCKET_NAME);
+            close_without_changing_errno(connection_socket);
+            unlink_without_changing_errno(SOCKET_NAME);
             return 4;
         }
 
@@ -91,13 +122,16 @@ int man7_server_main(void)
 
             /* Wait for next data packet. */
 
+            errno = 0;
             r = read(data_socket, buffer, sizeof(buffer));
+            errnum = errno;
+            write_function_results(__func__, "read", r, errnum);
+
             if (r == -1)
             {
-                perror("read");
-                close(data_socket);
-                close(connection_socket);
-                unlink(SOCKET_NAME);
+                close_without_changing_errno(data_socket);
+                close_without_changing_errno(connection_socket);
+                unlink_without_changing_errno(SOCKET_NAME);
                 return 5;
             }
 
@@ -123,27 +157,63 @@ int man7_server_main(void)
                 continue;
             }
 
+            // https://www.man7.org/linux/man-pages/man3/atoi.3.html
+            // https://www.man7.org/linux/man-pages/man3/atoi.3p.html
+            // https://www.man7.org/linux/man-pages/man3/strtol.3.html
+            // https://www.man7.org/linux/man-pages/man3/strtol.3p.html
+            // https://en.cppreference.com/w/cpp/string/basic_string/stol
+            // https://en.cppreference.com/w/cpp/language/catch
+            // https://en.cppreference.com/w/cpp/error/out_of_range
+            // https://en.cppreference.com/w/cpp/error/invalid_argument
+            int int_value = 0;
+            errno = 0;
+            try
+            {
+                int_value = std::stoi(buffer);
+            }
+            catch (const std::out_of_range &)
+            {
+                if (!errno)
+                {
+                    errno = ERANGE;
+                }
+            }
+            catch (...)
+            {
+                if (!errno)
+                {
+                    errno = EINVAL;
+                }
+            }
+            errnum = errno;
+            write_function_results(__func__, "std::stoi", int_value, errnum);
+
             /* Add received summand. */
 
-            result += atoi(buffer);
+            result += int_value;
         }
 
         /* Send result. */
 
-        sprintf(buffer, "%d", result);
+        snprintf(buffer, sizeof(buffer), "%d", result);
+        buffer[sizeof(buffer) - 1] = 0;
+
+        errno = 0;
         w = write(data_socket, buffer, sizeof(buffer));
+        errnum = errno;
+        write_function_results(__func__, "write", w, errnum);
+
         if (w == -1)
         {
-            perror("write");
-            close(data_socket);
-            close(connection_socket);
-            unlink(SOCKET_NAME);
+            close_without_changing_errno(data_socket);
+            close_without_changing_errno(connection_socket);
+            unlink_without_changing_errno(SOCKET_NAME);
             return 6;
         }
 
         /* Close socket. */
 
-        close(data_socket);
+        close_without_changing_errno(data_socket);
 
         /* Quit on DOWN command. */
 
@@ -153,11 +223,13 @@ int man7_server_main(void)
         }
     }
 
-    close(connection_socket);
+    close_without_changing_errno(connection_socket);
 
     /* Unlink the socket. */
 
-    unlink(SOCKET_NAME);
+    unlink_without_changing_errno(SOCKET_NAME);
 
     return 0;
 }
+
+#endif // SANDBOX_CPP_MAN7_SERVER

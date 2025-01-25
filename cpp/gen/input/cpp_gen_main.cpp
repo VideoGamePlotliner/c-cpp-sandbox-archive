@@ -1,8 +1,9 @@
 #include <iostream>
 
+// https://en.cppreference.com/w/cpp/language/escape
+// https://en.cppreference.com/w/cpp/language/string_literal
 static void append_escape(std::string &s, int i)
 {
-    // MUST RE-TEST
     switch ((char)i)
     {
     case '\'':
@@ -42,14 +43,19 @@ static void append_escape(std::string &s, int i)
         s += "\\0";
         break;
     default:
-        if ((i >= 1 && i <= 6) || (i >= 14 && i <= 32) || i == 127)
+        if ((i >= 1 && i <= 6) || (i >= 14 && i <= 31) || i == 127)
         {
             char x = i / 16;
-            if (x > 9)
-            {
-                x += 'a' - 10;
-            }
-            else
+
+            // Here, i is at least 1 and less than 128,
+            // so x is at least 0 and less than 8,
+            // so it is implied that !(x > 9).
+            //
+            // if (x > 9)
+            // {
+            //     x += 'a' - 10;
+            // }
+            // else
             {
                 x += '0';
             }
@@ -78,10 +84,9 @@ static void append_escape(std::string &s, int i)
 // https://en.cppreference.com/w/cpp/language/string_literal
 static std::string formula_for_CHAR_TO_STRING_LITERAL(int i = 0)
 {
-    // MUST RE-TEST
     if (i < 0 || i > 127)
     {
-        return "\"PLACEHOLDER PLACEHOLDER\"";
+        return "\"Could not convert this value because this value is not an integer from 0 to 127.\"";
     }
     else
     {
@@ -89,7 +94,7 @@ static std::string formula_for_CHAR_TO_STRING_LITERAL(int i = 0)
         s += "((c == '";
         append_escape(s, i);
         s += "') ? \"'";
-        if ((i >= 0 && i <= 32) || i == 127)
+        if ((i >= 0 && i <= 31) || i == 127)
         {
             s += '\\';
         }
