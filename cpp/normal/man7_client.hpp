@@ -1,5 +1,8 @@
 // Adapted from the "File client.c" section of https://www.man7.org/linux/man-pages/man7/unix.7.html
 
+#ifndef SANDBOX_CPP_MAN7_CLIENT
+#define SANDBOX_CPP_MAN7_CLIENT
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,20 +16,100 @@
 // https://www.man7.org/linux/man-pages/man2/wait.2.html
 #include <sys/wait.h>
 
+// Don't change errno.
+static std::string client_buffer_str(const std::string &buffer)
+{
+    int errnum = errno;
+    std::string s;
+    s += "Result = ";
+    s += buffer;
+    errno = errnum;
+    return s;
+}
+
+// Don't change errno.
+static std::string argv_str(int argc, const char *argv[], int i)
+{
+    int errnum = errno;
+    std::string s;
+    s += "write (argc is ";
+    s += std::to_string(argc);
+    s += " and argv[";
+    s += std::to_string(i);
+    s += "] is \"";
+    s += argv[i];
+    s += "\")";
+    errno = errnum;
+    return s;
+}
+
+// Typically, str is solely comprised of one or more sentences.
+// Don't change errno.
+static std::string num_tries_left_str(const std::string &str, int num_tries_left)
+{
+    int errnum = errno;
+    std::string s;
+    s += str;
+    s += " (Number of tries left is ";
+    s += std::to_string(num_tries_left);
+    s += ".)";
+    errno = errnum;
+    return s;
+}
+
+// https://www.man7.org/linux/man-pages/man2/write.2.html
+// https://www.man7.org/linux/man-pages/man3/write.3p.html
+// Output the string atomically, and don't change errno.
+static void write_client_buffer(const std::string &buffer)
+{
+    int errnum = errno;
+    write_str(client_buffer_str(buffer));
+    errno = errnum;
+}
+
+// https://www.man7.org/linux/man-pages/man2/write.2.html
+// https://www.man7.org/linux/man-pages/man3/write.3p.html
+// Typically, str is solely comprised of one or more sentences.
+// Output the string atomically, and don't change errno.
+static void write_num_tries_left(const std::string &str, int num_tries_left)
+{
+    int errnum = errno;
+    write_str(num_tries_left_str(str, num_tries_left));
+    errno = errnum;
+}
+
 int man7_client_main(int argc, const char *argv[], int num_tries_left = 5)
 {
+    if (num_tries_left <= 0)
+    {
+        write_num_tries_left("Whoops. Can't connect.", num_tries_left);
+
+        // https://www.man7.org/linux/man-pages/man3/errno.3.html
+        // https://www.man7.org/linux/man-pages/man3/errno.3p.html
+        // https://www.man7.org/linux/man-pages/man0/errno.h.0p.html
+        // "Errors" section of https://www.man7.org/linux/man-pages/man2/connect.2.html
+        errno = ECONNREFUSED;
+
+        return 5;
+    }
+
     int ret;
     int data_socket;
     ssize_t r, w;
-    struct sockaddr_un addr;
+    sockaddr_un addr;
     char buffer[BUFFER_SIZE];
+
+    int errnum = 0;
 
     /* Create local socket. */
 
+    errno = 0;
     data_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    errnum = errno;
+    write_function_results(__func__, "socket", data_socket, errnum);
+
     if (data_socket == -1)
     {
-        perror("socket");
         return 1;
     }
 
@@ -42,35 +125,43 @@ int man7_client_main(int argc, const char *argv[], int num_tries_left = 5)
 
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_NAME, sizeof(addr.sun_path) - 1);
+    addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
 
     errno = 0;
-    ret = connect(data_socket, (const struct sockaddr *)&addr,
-                  sizeof(addr));
+    ret = connect(data_socket, (const sockaddr *)&addr, sizeof(addr));
+    errnum = errno;
+    write_function_results(__func__, "connect", ret, errnum);
+
     if (ret == -1)
     {
-        int errnum = errno;
-
-        // https://www.man7.org/linux/man-pages/man3/strerror.3.html
-#ifdef _GNU_SOURCE
-        fprintf(stderr, "The server is down. Error number is %d. Error name is \"%s\". Error desc is \"%s\"\n", errnum, strerrorname_np(errnum), strerrordesc_np(errnum));
-#else
-        fprintf(stderr, "The server is down. Error number is %d. Error string is \"%s\".\n", errnum, strerror(errnum));
-#endif // _GNU_SOURCE
-
-        close(data_socket);
+        // According to https://www.man7.org/linux/man-pages/man2/connect.2.html,
+        // "If `connect()` fails, consider the state of the socket as unspecified.
+        // Portable applications should close the socket and create a new one for
+        // reconnecting."
+        close_without_changing_errno(data_socket);
 
         num_tries_left--;
 
         if (num_tries_left > 0)
         {
-            fprintf(stderr, "Whoops. Failed to connect. Waiting...\n");
+            write_num_tries_left("Whoops. Failed to connect. Waiting.", num_tries_left);
+
             sleep(1);
-            fprintf(stderr, "Let's try connecting again (%d %s left).\n", num_tries_left, num_tries_left == 1 ? "try" : "tries");
+
+            write_num_tries_left("Let's try reconnecting.", num_tries_left);
+
             return man7_client_main(argc, argv, num_tries_left);
         }
         else
         {
-            fprintf(stderr, "Whoops. Can't try connecting again.\n");
+            write_num_tries_left("Whoops. Can't reconnect.", num_tries_left);
+
+            // https://www.man7.org/linux/man-pages/man3/errno.3.html
+            // https://www.man7.org/linux/man-pages/man3/errno.3p.html
+            // https://www.man7.org/linux/man-pages/man0/errno.h.0p.html
+            // "Errors" section of https://www.man7.org/linux/man-pages/man2/connect.2.html
+            errno = ECONNREFUSED;
+
             return 2;
         }
     }
@@ -79,33 +170,44 @@ int man7_client_main(int argc, const char *argv[], int num_tries_left = 5)
 
     for (int i = 1; i < argc; ++i)
     {
+        errno = 0;
         w = write(data_socket, argv[i], strlen(argv[i]) + 1);
+        errnum = errno;
+        write_function_results(__func__, argv_str(argc, argv, i), w, errnum);
+
         if (w == -1)
         {
-            perror("write");
-            close(data_socket);
+            close_without_changing_errno(data_socket);
             break;
         }
     }
 
     /* Request result. */
 
-    strcpy(buffer, "END");
+    strncpy(buffer, "END", sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = 0;
+
+    errno = 0;
     w = write(data_socket, buffer, strlen(buffer) + 1);
+    errnum = errno;
+    write_function_results(__func__, "write (\"END\")", w, errnum);
+
     if (w == -1)
     {
-        perror("write");
-        close(data_socket);
+        close_without_changing_errno(data_socket);
         return 3;
     }
 
     /* Receive result. */
 
+    errno = 0;
     r = read(data_socket, buffer, sizeof(buffer));
+    errnum = errno;
+    write_function_results(__func__, "read", r, errnum);
+
     if (r == -1)
     {
-        perror("read");
-        close(data_socket);
+        close_without_changing_errno(data_socket);
         return 4;
     }
 
@@ -113,48 +215,13 @@ int man7_client_main(int argc, const char *argv[], int num_tries_left = 5)
 
     buffer[sizeof(buffer) - 1] = 0;
 
-    printf("Result = %s\n", buffer);
+    write_client_buffer(buffer);
 
     /* Close socket. */
 
-    close(data_socket);
+    close_without_changing_errno(data_socket);
 
     return 0;
 }
 
-// https://www.man7.org/linux/man-pages/man2/fork.2.html
-// https://www.man7.org/linux/man-pages/man2/wait.2.html
-int man7_client_main_fork(int argc, const char *argv[])
-{
-    errno = 0;
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        perror("fork");
-        return 20;
-    }
-    else if (pid == 0)
-    {
-        // Child
-        exit(man7_client_main(argc, argv));
-    }
-    else
-    {
-        // Parent
-        int status = 0;
-        errno = 0;
-        if (waitpid(pid, &status, 0) == -1)
-        {
-            perror("waitpid");
-            return 21;
-        }
-        else if (WIFEXITED(status))
-        {
-            return WEXITSTATUS(status);
-        }
-        else
-        {
-            return 22;
-        }
-    }
-}
+#endif // SANDBOX_CPP_MAN7_CLIENT

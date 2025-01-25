@@ -4,6 +4,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <cstring>
+#include <cassert>
 
 //
 //
@@ -27,13 +29,119 @@ private:
     char **v = nullptr; // argv
 
 public:
-    args(int argc, char const *argv[]); // May throw std::invalid_argument
-    args(const args &other) noexcept;
-    ~args() noexcept;
-    args &operator=(const args &other) noexcept;
+    // May throw std::invalid_argument
+    args(int argc, char const *argv[]) : c(0), v(nullptr)
+    {
+        if (argc < 0)
+        {
+            std::string s(__PRETTY_FUNCTION__);
+            s += " -- argc must not be negative";
+            throw std::invalid_argument(s);
+        }
+        else if (argc == 0)
+        {
+            if (argv)
+            {
+                std::string s(__PRETTY_FUNCTION__);
+                s += " -- If argc is zero, then argv must be nullptr.";
+                throw std::invalid_argument(s);
+            }
+        }
+        else
+        {
+            // argc > 0
+
+            if (argv)
+            {
+                c = argc;
+
+                v = new char *[c];
+
+                for (int i = 0; i < c; i++)
+                {
+                    if (argv[i])
+                    {
+                        auto len = std::strlen(argv[i]);
+                        char *vi = new char[len + 1];
+                        if (len > 0)
+                        {
+                            std::strncpy(vi, argv[i], len);
+                        }
+                        vi[len] = 0; // NOT v[len] = 0
+                        v[i] = vi;
+                    }
+                    else
+                    {
+                        v[i] = nullptr;
+                    }
+                }
+            }
+            else
+            {
+                std::string s(__PRETTY_FUNCTION__);
+                s += " -- If argc is positive, then argv must be a nonzero pointer.";
+                throw std::invalid_argument(s);
+            }
+        }
+    }
+
+    args(const args &other) noexcept : c(0), v(nullptr) { *this = other; }
+    ~args() noexcept { clear(); }
+
+    args &operator=(const args &other) noexcept
+    {
+        if (this != &other)
+        {
+            clear();
+
+            if ((other.c > 0) && other.v)
+            {
+                c = other.c;
+
+                v = new char *[c];
+
+                for (int i = 0; i < c; i++)
+                {
+                    if (other.v[i])
+                    {
+                        auto len = std::strlen(other.v[i]);
+                        char *vi = new char[len + 1];
+                        if (len > 0)
+                        {
+                            std::strncpy(vi, other.v[i], len);
+                        }
+                        vi[len] = 0; // NOT v[len] = 0
+                        v[i] = vi;
+                    }
+                    else
+                    {
+                        v[i] = nullptr;
+                    }
+                }
+            }
+        }
+        return *this;
+    }
 
 private:
-    void clear() noexcept; // Should be private
+    // Should be private
+    void clear() noexcept
+    {
+        if (v)
+        {
+            for (int i = 0; i < c; i++)
+            {
+                if (v[i])
+                {
+                    delete[] (v[i]);
+                    v[i] = nullptr;
+                }
+            }
+            delete[] v;
+            v = nullptr;
+        }
+        c = 0;
+    }
 
 private:
     // https://en.cppreference.com/w/cpp/language/range-for
@@ -52,7 +160,13 @@ private:
 
     public:
         iterator(int initial_index, args &a) : current_index(initial_index), args_ref(a) {}
-        bool operator!=(const iterator &other) const noexcept { return current_index != other.current_index; }
+
+    public:
+        bool operator!=(const iterator &other) const noexcept
+        {
+            assert(&args_ref == &other.args_ref);
+            return current_index != other.current_index;
+        }
 
     public:
         iterator &operator++() noexcept
@@ -63,6 +177,7 @@ private:
 
     public:
         // May throw std::out_of_range
+        // Be careful with this function's return value, because it might be nullptr.
         auto &operator*()
         {
             if (current_index < 0 || current_index >= args_ref.c)
@@ -86,7 +201,13 @@ private:
 
     public:
         const_iterator(int initial_index, const args &a) : current_index(initial_index), args_ref(a) {}
-        bool operator!=(const const_iterator &other) const noexcept { return current_index != other.current_index; }
+
+    public:
+        bool operator!=(const const_iterator &other) const noexcept
+        {
+            assert(&args_ref == &other.args_ref);
+            return current_index != other.current_index;
+        }
 
     public:
         const_iterator &operator++() noexcept
@@ -97,6 +218,7 @@ private:
 
     public:
         // May throw std::out_of_range
+        // Be careful with this function's return value, because it might be nullptr.
         const auto &operator*() const
         {
             if (current_index < 0 || current_index >= args_ref.c)
@@ -123,7 +245,36 @@ public:
 public:
     // https://en.cppreference.com/w/cpp/language/operators
     // "Stream extraction and insertion" section
-    std::ostream &operator_os(std::ostream &os) const noexcept;
+    std::ostream &operator_os(std::ostream &os) const noexcept
+    {
+        os << '{' << c << ',';
+        if (v)
+        {
+            os << '{';
+            for (int i = 0; i < c; i++)
+            {
+                if (i > 0)
+                {
+                    os << ',';
+                }
+
+                if (v[i])
+                {
+                    os << '\"' << v[i] << '\"';
+                }
+                else
+                {
+                    os << "nullptr";
+                }
+            }
+            os << '}';
+        }
+        else
+        {
+            os << "nullptr";
+        }
+        return os << '}';
+    }
 };
 
 #endif // SANDBOX_CPP_ARGS

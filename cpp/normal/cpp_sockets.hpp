@@ -25,13 +25,14 @@
 // https://www.man7.org/linux/man-pages/man0/sys_uio.h.0p.html
 #include <sys/uio.h>
 
-// https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
-// https://www.man7.org/linux/man-pages/man0/sys_un.h.0p.html
-// https://www.man7.org/linux/man-pages/man0/stddef.h.0p.html
-// https://www.man7.org/linux/man-pages/man0/stdio.h.0p.html
 // https://www.man7.org/linux/man-pages/man0/unistd.h.0p.html
-// https://www.man7.org/linux/man-pages/man3/freeaddrinfo.3p.html
-// https://www.man7.org/linux/man-pages/man3/getnameinfo.3p.html
+#include <unistd.h>
+
+// https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+#include <netdb.h>
+
+// https://www.man7.org/linux/man-pages/man0/sys_un.h.0p.html
+#include <sys/un.h>
 
 // https://www.man7.org/linux/man-pages/dir_all_alphabetic.html
 
@@ -45,6 +46,12 @@ namespace cpp_sockets
     // Determine which value of `domain` you want before determining which value of `type` you want or which value of `protocol` you want.
     // If error, return -1. Otherwise, return new FD.
     int f_socket(int domain, int type, int protocol) { return socket(domain, type, protocol); }
+
+    // https://www.man7.org/linux/man-pages/man0/unistd.h.0p.html
+    // https://www.man7.org/linux/man-pages/man2/close.2.html
+    // https://www.man7.org/linux/man-pages/man3/close.3p.html
+    // If error, return -1. Otherwise, return 0.
+    int f_close(int fd) { return close(fd); }
 
     // https://www.man7.org/linux/man-pages/man0/sys_uio.h.0p.html
     // https://www.man7.org/linux/man-pages/man2/readv.2.html
@@ -126,17 +133,18 @@ namespace cpp_sockets
     static_assert(std::is_same_v<in_addr_t, uint32_t>);
 
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
-    // uint8_t
-    // uint32_t
-
-    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
     ASSERT_IS_CLASS(in_addr);
     ASSERT_IS_CLASS(sockaddr_in);
     ASSERT_IS_CLASS(in6_addr);
     ASSERT_IS_CLASS(sockaddr_in6);
-    const in6_addr c_in6addr_any = IN6ADDR_ANY_INIT;
-    const in6_addr c_in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
     ASSERT_IS_CLASS(ipv6_mreq);
+
+    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+    void s_in6_addr_2()
+    {
+        const in6_addr x_in6addr_any = IN6ADDR_ANY_INIT;
+        const in6_addr x_in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
+    }
 
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
     // Can be the `level` value for `getsockopt()` and `setsockopt()`
@@ -174,32 +182,141 @@ namespace cpp_sockets
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
     void s_in6_addr()
     {
-        const struct in6_addr c_in6_addr = IN6ADDR_LOOPBACK_INIT;
-
-        IN6_IS_ADDR_UNSPECIFIED(&c_in6_addr);
-
-        IN6_IS_ADDR_LOOPBACK(&c_in6_addr);
-
-        IN6_IS_ADDR_MULTICAST(&c_in6_addr);
-
-        IN6_IS_ADDR_LINKLOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_SITELOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_V4MAPPED(&c_in6_addr);
-
-        IN6_IS_ADDR_V4COMPAT(&c_in6_addr);
-
-        IN6_IS_ADDR_MC_NODELOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_MC_LINKLOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_MC_SITELOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_MC_ORGLOCAL(&c_in6_addr);
-
-        IN6_IS_ADDR_MC_GLOBAL(&c_in6_addr);
+        const in6_addr x_in6_addr = IN6ADDR_LOOPBACK_INIT;
+        IN6_IS_ADDR_UNSPECIFIED(&x_in6_addr);
+        IN6_IS_ADDR_LOOPBACK(&x_in6_addr);
+        IN6_IS_ADDR_MULTICAST(&x_in6_addr);
+        IN6_IS_ADDR_LINKLOCAL(&x_in6_addr);
+        IN6_IS_ADDR_SITELOCAL(&x_in6_addr);
+        IN6_IS_ADDR_V4MAPPED(&x_in6_addr);
+        IN6_IS_ADDR_V4COMPAT(&x_in6_addr);
+        IN6_IS_ADDR_MC_NODELOCAL(&x_in6_addr);
+        IN6_IS_ADDR_MC_LINKLOCAL(&x_in6_addr);
+        IN6_IS_ADDR_MC_SITELOCAL(&x_in6_addr);
+        IN6_IS_ADDR_MC_ORGLOCAL(&x_in6_addr);
+        IN6_IS_ADDR_MC_GLOBAL(&x_in6_addr);
     }
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_CLASS(hostent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_CLASS(netent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_CLASS(protoent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_CLASS(servent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_CLASS(addrinfo);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // Can be the `ai_flags` value for an `addrinfo`
+    DECLARE_CONSTANT_ALIAS(AI_PASSIVE);
+    DECLARE_CONSTANT_ALIAS(AI_CANONNAME);
+    DECLARE_CONSTANT_ALIAS(AI_NUMERICHOST);
+    DECLARE_CONSTANT_ALIAS(AI_NUMERICSERV);
+    DECLARE_CONSTANT_ALIAS(AI_V4MAPPED);
+    DECLARE_CONSTANT_ALIAS(AI_ALL);
+    DECLARE_CONSTANT_ALIAS(AI_ADDRCONFIG);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // Can be the `flags` argument for `getnameinfo()`
+    DECLARE_CONSTANT_ALIAS(NI_NOFQDN);
+    DECLARE_CONSTANT_ALIAS(NI_NUMERICHOST);
+    DECLARE_CONSTANT_ALIAS(NI_NAMEREQD);
+    DECLARE_CONSTANT_ALIAS(NI_NUMERICSERV);
+#ifdef NI_NUMERICSCOPE
+    DECLARE_CONSTANT_ALIAS(NI_NUMERICSCOPE);
+#endif // NI_NUMERICSCOPE
+    DECLARE_CONSTANT_ALIAS(NI_DGRAM);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // "for use as error values for `getaddrinfo()` and `getnameinfo()`"
+    DECLARE_CONSTANT_ALIAS(EAI_AGAIN);
+    DECLARE_CONSTANT_ALIAS(EAI_BADFLAGS);
+    DECLARE_CONSTANT_ALIAS(EAI_FAIL);
+    DECLARE_CONSTANT_ALIAS(EAI_FAMILY);
+    DECLARE_CONSTANT_ALIAS(EAI_MEMORY);
+    DECLARE_CONSTANT_ALIAS(EAI_NONAME);
+    DECLARE_CONSTANT_ALIAS(EAI_SERVICE);
+    DECLARE_CONSTANT_ALIAS(EAI_SOCKTYPE);
+    DECLARE_CONSTANT_ALIAS(EAI_SYSTEM);
+    DECLARE_CONSTANT_ALIAS(EAI_OVERFLOW);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(endhostent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(endnetent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(endprotoent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(endservent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // https://www.man7.org/linux/man-pages/man3/freeaddrinfo.3p.html
+    void f_freeaddrinfo(addrinfo *ai) { freeaddrinfo(ai); }
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(gai_strerror);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // https://www.man7.org/linux/man-pages/man3/freeaddrinfo.3p.html
+    int f_getaddrinfo(const char *nodename, const char *servname, const addrinfo *hints, addrinfo **res) { return getaddrinfo(nodename, servname, hints, res); }
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(gethostent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    // https://www.man7.org/linux/man-pages/man3/getnameinfo.3p.html
+    int f_getnameinfo(const sockaddr *sa, socklen_t salen, char *node, socklen_t nodelen, char *service, socklen_t servicelen, int flags) { return getnameinfo(sa, salen, node, nodelen, service, servicelen, flags); }
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getnetbyaddr);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getnetbyname);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getnetent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getprotobyname);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getprotobynumber);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getprotoent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getservbyname);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getservbyport);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(getservent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(sethostent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(setnetent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(setprotoent);
+
+    // https://www.man7.org/linux/man-pages/man0/netdb.h.0p.html
+    ASSERT_IS_FUNCTION(setservent);
+
+    // https://www.man7.org/linux/man-pages/man0/sys_un.h.0p.html
+    ASSERT_IS_CLASS(sockaddr_un);
 
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
     // const sockaddr_in6 c_sockaddr_in6 = {0};
