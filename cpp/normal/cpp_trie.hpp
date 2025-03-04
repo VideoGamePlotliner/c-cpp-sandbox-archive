@@ -182,6 +182,12 @@ private:
 
             for (auto &&pair : children)
             {
+                if (!first_pair)
+                {
+                    os << ',';
+                }
+                first_pair = false;
+
                 char c = pair.first;
                 os << '{' << CHAR_TO_STRING_LITERAL(c) << ',';
 
@@ -193,12 +199,6 @@ private:
                 {
                     os << "nullptr}";
                 }
-
-                if (!first_pair)
-                {
-                    os << ',';
-                }
-                first_pair = false;
             }
             return os << "}}";
         }

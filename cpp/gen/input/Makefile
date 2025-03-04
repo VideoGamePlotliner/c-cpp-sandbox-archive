@@ -1,7 +1,7 @@
 # https://www.gnu.org/software/make/manual/make.html#Simple-Makefile
 # https://www.gnu.org/software/make/manual/make.html#index-C_002b_002b_002c-rule-to-compile
 
-CPPFLAGS += -g
+CPPFLAGS += -g -Wall -Werror -Wpedantic
 
 .PHONY: all
 all: cpp_gen_main

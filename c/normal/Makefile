@@ -6,7 +6,7 @@
 # https://www.gnu.org/software/make/manual/make.html#index-CPPFLAGS
 # https://www.gnu.org/software/make/manual/make.html#index-C_002c-rule-to-compile
 
-CPPFLAGS += -g
+CPPFLAGS += -g -Wall -Werror -Wpedantic
 
 .PHONY: all
 all: c_main
