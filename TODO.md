@@ -1,18 +1,22 @@
 # High-priority tasks
 
+## Add IPv4 and IPv6 info
+- [x] Add stuff related to IPv4
+- [ ] Add stuff related to IPv6
+
 ## Moving code
 - [x] Moved all code in `c/normal/c_headers.*` to `c/normal/c_main.c`. Also deleted `c/normal/c_headers.*` and edited `c/normal/Makefile` to compensate.
 - [x] Moved all code in `cpp/normal/cpp_args.cpp` to `cpp/normal/cpp_args.hpp`. Also deleted `cpp/normal/cpp_args.cpp` and `cpp/normal/cpp_trie.cpp` and edited `cpp/normal/Makefile` to compensate.
 
 ## Test or re-test everything
-- [ ] Ensure the correctness of *each and every* function in this repo.
+- [x] Ensure the correctness of *each and every* function in this repo.
 
 It might be a good idea to separate the following subtasks by file type, and handle the file types in this order:
 - [x] 1. Ensure the correctness of *each and every* `Makefile` in this repo.
 - [x] 2. Ensure the correctness of *each and every* function in *each and every* `.c` in this repo.
 - [x] 3. Ensure the correctness of *each and every* function in *each and every* `.h` in this repo.
 - [x] 4. Ensure the correctness of *each and every* function in *each and every* `.cpp` in this repo, especially the correctness of all concurrent code.
-- [ ] 5. Ensure the correctness of *each and every* function in *each and every* `.hpp` in this repo, especially the correctness of all concurrent code.
+- [x] 5. Ensure the correctness of *each and every* function in *each and every* `.hpp` in this repo, especially the correctness of all concurrent code.
 
 ## Merge approval policy AND continuous integration
 

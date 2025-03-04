@@ -4,7 +4,7 @@
 # https://www.gnu.org/software/make/manual/make.html#Wildcard-Pitfall
 # https://www.gnu.org/software/make/manual/make.html#Wildcard-Function
 
-CPPFLAGS += -g
+CPPFLAGS += -g -Wall -Werror -Wpedantic
 
 .PHONY: all
 all: cpp_main

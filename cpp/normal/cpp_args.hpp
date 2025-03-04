@@ -6,6 +6,7 @@
 #include <string>
 #include <cstring>
 #include <cassert>
+#include <initializer_list>
 
 //
 //
@@ -121,6 +122,76 @@ public:
             }
         }
         return *this;
+    }
+
+private:
+    //
+    // https://en.cppreference.com/w/cpp/language/initialization
+    // "If the initializer is of syntax (3), the object is direct-initialized."
+    //
+    // https://en.cppreference.com/w/cpp/language/direct_initialization
+    // "2) Initialization of an object of non-class type with a single brace-
+    // enclosed initializer (note: for class types and other uses of braced-
+    // init-list, see list-initialization)(since C++11)."
+    //
+    // https://en.cppreference.com/w/cpp/language/list_initialization
+    // "Initializes an object from a brace-enclosed initializer list."
+    //
+    // https://en.cppreference.com/w/cpp/language/initialization
+    // "Syntaxes (2-4) [for an initializer clause] are collectively called
+    // brace-enclosed initializer list."
+    //
+    // https://en.cppreference.com/w/cpp/utility/initializer_list
+    //
+
+public:
+    // May throw std::invalid_argument
+    args(std::initializer_list<const char *> il) : c(0), v(nullptr)
+    {
+        int argc = static_cast<int>(il.size());
+        if (argc < 0)
+        {
+            std::string s(__PRETTY_FUNCTION__);
+            s += " -- static_cast<int>(il.size()) must not be negative";
+            throw std::invalid_argument(s);
+        }
+        else if (argc == 0)
+        {
+            c = 0;
+            v = nullptr;
+        }
+        else
+        {
+            // argc > 0
+
+            c = argc;
+
+            v = new char *[c];
+
+            int i = 0;
+            for (const char *argv_i : il)
+            {
+                if (i < c)
+                {
+                    if (argv_i)
+                    {
+                        auto len = std::strlen(argv_i);
+                        char *vi = new char[len + 1];
+                        if (len > 0)
+                        {
+                            std::strncpy(vi, argv_i, len);
+                        }
+                        vi[len] = 0; // NOT v[len] = 0
+                        v[i] = vi;
+                    }
+                    else
+                    {
+                        v[i] = nullptr;
+                    }
+                }
+                i++;
+            }
+        }
     }
 
 private:

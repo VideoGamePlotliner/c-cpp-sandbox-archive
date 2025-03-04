@@ -1,8 +1,14 @@
 # I had some help with this file from https://git-scm.com/docs/gitignore.
 
 # Exclude these executable files
-/c/copied/client
-/c/copied/server
+/c/copied/gnu/edit
+/c/copied/man7/client
+/c/copied/man7/server
+/c/copied/man7/getaddrinfo_example_client
+/c/copied/man7/getaddrinfo_example_server
+/c/copied/man7/inet_pton_example
+/c/copied/man7/sendmmsg_example
+/c/copied/man7/select_tut_example
 /c/normal/c_main
 /cpp/gen/input/cpp_gen_main
 /cpp/normal/cpp_main

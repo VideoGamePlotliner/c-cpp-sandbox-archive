@@ -1,6 +1,7 @@
 #ifndef SANDBOX_CPP_SOCKETS
 #define SANDBOX_CPP_SOCKETS
 
+#include <cerrno>
 #include "cpp_assert.hpp"
 #include "cpp_alias.hpp"
 
@@ -34,10 +35,81 @@
 // https://www.man7.org/linux/man-pages/man0/sys_un.h.0p.html
 #include <sys/un.h>
 
+// https://www.man7.org/linux/man-pages/man0/fcntl.h.0p.html
+// https://www.man7.org/linux/man-pages/man2/fcntl.2.html
+// https://www.man7.org/linux/man-pages/man3/fcntl.3p.html
+// https://www.man7.org/linux/man-pages/man2/fcntl64.2.html
+// #include <fcntl.h>
+
+// Special thanks to...
+// https://github.com/search?q=repo%3Amkerrisk%2Fman-pages+%22AF_INET%22&type=code
+// https://github.com/search?q=repo%3Amkerrisk%2Fman-pages+%22AF_INET%22&type=code&p=2
+// ...for helping me find the "EXAMPLES" sections of...
+// https://www.man7.org/linux/man-pages/man3/getaddrinfo.3.html
+// https://www.man7.org/linux/man-pages/man3/inet_ntop.3.html
+// https://www.man7.org/linux/man-pages/man3/inet_pton.3.html
+// https://www.man7.org/linux/man-pages/man2/select_tut.2.html
+// https://www.man7.org/linux/man-pages/man2/sendmmsg.2.html
+
+// Curious about byte orders? Then refer to:
+// https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+// https://www.man7.org/linux/man-pages/man7/ip.7.html
+// https://www.man7.org/linux/man-pages/man3/sockaddr_in.3type.html
+// https://www.man7.org/linux/man-pages/man3/htons.3.html
+// https://www.man7.org/linux/man-pages/man3/htonl.3.html
+// https://www.man7.org/linux/man-pages/man3/ntohs.3.html
+// https://www.man7.org/linux/man-pages/man3/ntohl.3.html
+
+// TODO IOCTL
+
+// TODO De-couple
+
+// TODO What if strerror or strerrorname_np or strerrordesc_np or strsignal or sigdescr_np or sigabbrev_np returns NULL?
+// TODO While I'm at it, centralize duplicate code related to strerror and strsignal.
+// TODO Beware thread-unsafe strsignal
+// TODO Handle any instance of 's += NULL;'
+// TODO Handle any instance of 'std::string s(NULL);'
+
+// TODO "EXAMPLES" section of https://www.man7.org/linux/man-pages/man2/select_tut.2.html
+
 // https://www.man7.org/linux/man-pages/dir_all_alphabetic.html
+
+// https://www.man7.org/linux/man-pages/man7/ip.7.html
+// https://www.man7.org/linux/man-pages/man3/in_port_t.3type.html
+// In host byte order
+#define LOWER_BOUND_FOR_LOCAL_IP_PORT ((in_port_t)4097)
+
+// https://en.cppreference.com/w/cpp/preprocessor/replace
+// "Socket options" section of https://www.man7.org/linux/man-pages/man7/ip.7.html
+// https://www.man7.org/linux/man-pages/man2/getsockopt.2.html
+// WARNING: https://www.man7.org/linux/man-pages/man3/getsockopt.3p.html says that optval might become "silently truncated."
+#define GSO_IP(optname) \
+    int f_getsockopt_IP_and_##optname(int sockfd, int &optval, socklen_t &optlen) { return getsockopt(sockfd, IPPROTO_IP, optname, &optval, &optlen); }
+
+// https://en.cppreference.com/w/cpp/preprocessor/replace
+// "Socket options" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+// https://www.man7.org/linux/man-pages/man2/getsockopt.2.html
+// WARNING: https://www.man7.org/linux/man-pages/man3/getsockopt.3p.html says that optval might become "silently truncated."
+#define GSO_TCP(optname) \
+    int f_getsockopt_TCP_and_##optname(int sockfd, int &optval, socklen_t &optlen) { return getsockopt(sockfd, IPPROTO_TCP, optname, &optval, &optlen); }
+
+// https://en.cppreference.com/w/cpp/preprocessor/replace
+// https://www.man7.org/linux/man-pages/man2/getsockopt.2.html
+// WARNING: https://www.man7.org/linux/man-pages/man3/getsockopt.3p.html says that optval might become "silently truncated."
+#define GSO_SOCKET(optname) \
+    int f_getsockopt_SOCKET_and_##optname(int sockfd, int &optval, socklen_t &optlen) { return getsockopt(sockfd, SOL_SOCKET, optname, &optval, &optlen); }
+
+// The "APPLICATION USAGE" section of https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html says,
+// "To forestall portability problems, it is recommended that applications not use values larger than 231 -1 for the socklen_t type."
+// I think they mean, "2 to the power of 31, minus 1", because
+// https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html and
+// https://www.man7.org/linux/man-pages/man3/socklen_t.3type.html imply
+// that sizeof(socklen_t) >= 4.
+#define MAX_SOCKLEN ((int32_t)0x7FFFFFFF)
 
 namespace cpp_sockets
 {
+    static_assert(MAX_SOCKLEN > 0);
 
     // https://www.man7.org/linux/man-pages/man2/socket.2.html
     // If `domain` is `AF_UNIX`, then refer to https://www.man7.org/linux/man-pages/man7/unix.7.html
@@ -53,6 +125,205 @@ namespace cpp_sockets
     // If error, return -1. Otherwise, return 0.
     int f_close(int fd) { return close(fd); }
 
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_socket_ip_stream_tcp() { return f_socket(AF_INET, SOCK_STREAM, 0); }
+
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_socket_ip_datagram_udp() { return f_socket(AF_INET, SOCK_DGRAM, 0); }
+
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_socket_ip_stream_sctp() { return f_socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP); }
+
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_socket_ip_datagram_udplite() { return f_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE); }
+
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_socket_ip_raw(int protocol) { return f_socket(AF_INET, SOCK_RAW, protocol); }
+
+    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // https://www.man7.org/linux/man-pages/man3/sockaddr_in.3type.html
+    // https://www.man7.org/linux/man-pages/man3/htons.3.html
+    // https://www.man7.org/linux/man-pages/man3/htonl.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohs.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohl.3.html
+    // https://www.man7.org/linux/man-pages/man2/bind.2.html
+    // If error, return -1. Otherwise, return 0.
+    int f_bind_ip(int sockfd, in_port_t port_in_host_byte_order, in_addr_t address_in_host_byte_order)
+    {
+        if (port_in_host_byte_order < LOWER_BOUND_FOR_LOCAL_IP_PORT)
+        {
+            errno = EACCES;
+            return -1;
+        }
+        sockaddr_in addr = {0};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port_in_host_byte_order);
+        addr.sin_addr.s_addr = htonl(address_in_host_byte_order);
+        return bind(sockfd, (const sockaddr *)&addr, sizeof(addr));
+    }
+
+    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // https://www.man7.org/linux/man-pages/man3/sockaddr_in.3type.html
+    // https://www.man7.org/linux/man-pages/man3/htons.3.html
+    // https://www.man7.org/linux/man-pages/man3/htonl.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohs.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohl.3.html
+    // https://www.man7.org/linux/man-pages/man2/connect.2.html
+    // If error, return -1. Otherwise, return 0.
+    int f_connect_ip(int sockfd, in_port_t port_in_host_byte_order, in_addr_t address_in_host_byte_order)
+    {
+        if (port_in_host_byte_order < LOWER_BOUND_FOR_LOCAL_IP_PORT)
+        {
+            errno = EACCES;
+            return -1;
+        }
+        sockaddr_in addr = {0};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port_in_host_byte_order);
+        addr.sin_addr.s_addr = htonl(address_in_host_byte_order);
+        return connect(sockfd, (const sockaddr *)&addr, sizeof(addr));
+    }
+
+    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+    // https://www.man7.org/linux/man-pages/man7/ip.7.html
+    // https://www.man7.org/linux/man-pages/man3/sockaddr_in.3type.html
+    // https://www.man7.org/linux/man-pages/man3/htons.3.html
+    // https://www.man7.org/linux/man-pages/man3/htonl.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohs.3.html
+    // https://www.man7.org/linux/man-pages/man3/ntohl.3.html
+    // https://www.man7.org/linux/man-pages/man2/accept.2.html
+    // "EXAMPLES" section of https://www.man7.org/linux/man-pages/man2/bind.2.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_accept_ip(int sockfd, in_port_t &peer_port_in_host_byte_order, in_addr_t &peer_address_in_host_byte_order, socklen_t &peer_address_length)
+    {
+        sockaddr_in addr = {0};
+        socklen_t addrlen = sizeof(addr);
+
+        int return_value = accept(sockfd, (sockaddr *)&addr, &addrlen);
+
+        if (return_value != -1)
+        {
+            if (addr.sin_family != AF_INET)
+            {
+                // Shrug
+            }
+            if (ntohs(addr.sin_port) < LOWER_BOUND_FOR_LOCAL_IP_PORT)
+            {
+                // Shrug
+            }
+            peer_port_in_host_byte_order = ntohs(addr.sin_port);
+            peer_address_in_host_byte_order = ntohl(addr.sin_addr.s_addr);
+            peer_address_length = addrlen;
+        }
+
+        return return_value;
+    }
+
+    // https://www.man7.org/linux/man-pages/man2/accept.2.html
+    // If error, return -1. Otherwise, return new FD.
+    int f_accept_NULL(int sockfd) { return accept(sockfd, (sockaddr *)NULL, (socklen_t *)NULL); }
+
+    // https://datatracker.ietf.org/doc/html/rfc791#section-3.1
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/ip.7.html
+    GSO_IP(IP_TTL)
+    GSO_IP(IP_TOS)
+
+    // https://www.man7.org/linux/man-pages/man0/netinet_tcp.h.0p.html
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    GSO_TCP(TCP_NODELAY)
+
+    // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/socket.7.html
+    GSO_SOCKET(SO_ACCEPTCONN)
+    GSO_SOCKET(SO_BROADCAST)
+    GSO_SOCKET(SO_DEBUG)
+    GSO_SOCKET(SO_DONTROUTE)
+    GSO_SOCKET(SO_KEEPALIVE)
+    GSO_SOCKET(SO_OOBINLINE)
+    GSO_SOCKET(SO_RCVBUF)
+    GSO_SOCKET(SO_REUSEADDR)
+    GSO_SOCKET(SO_SNDBUF)
+    GSO_SOCKET(SO_TYPE)
+
+    // https://www.man7.org/linux/man-pages/man2/connect.2.html
+    // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/socket.7.html
+    GSO_SOCKET(SO_ERROR)
+
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/socket.7.html
+    GSO_SOCKET(SO_DOMAIN)
+    GSO_SOCKET(SO_PROTOCOL)
+
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    GSO_TCP(TCP_MAXSEG)
+    GSO_TCP(TCP_SYNCNT)
+
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    int f_getsockopt_TCP_and_TCP_USER_TIMEOUT(int sockfd, unsigned int &optval, socklen_t &optlen) { return getsockopt(sockfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &optval, &optlen); }
+
+    // "DESCRIPTION" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    // "A newly created TCP socket has no remote or local address and is
+    // not fully specified. To create an outgoing TCP connection use
+    // connect(2) to establish a connection to another TCP socket. To
+    // receive new incoming connections, first bind(2) the socket to a
+    // local address and port and then call listen(2) to put the socket
+    // into the listening state. After that a new socket for each
+    // incoming connection can be accepted using accept(2). A socket
+    // which has had accept(2) or connect(2) successfully called on it is
+    // fully specified and may transmit data. Data cannot be transmitted
+    // on listening or not yet connected sockets."
+
+    // "DESCRIPTION" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    // "TCP supports urgent data. Urgent data is used to signal the
+    // receiver that some important message is part of the data stream
+    // and that it should be processed as soon as possible. To send
+    // urgent data specify the MSG_OOB option to send(2). When urgent
+    // data is received, the kernel sends a SIGURG signal to the process
+    // or process group that has been set as the socket "owner" using the
+    // SIOCSPGRP or FIOSETOWN ioctls (or the POSIX.1-specified fcntl(2)
+    // F_SETOWN operation). When the SO_OOBINLINE socket option is
+    // enabled, urgent data is put into the normal data stream (a program
+    // can test for its location using the SIOCATMARK ioctl described
+    // below), otherwise it can be received only when the MSG_OOB flag is
+    // set for recv(2) or recvmsg(2)."
+
+    // "DESCRIPTION" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    // "When out-of-band data is present, select(2) indicates the file
+    // descriptor as having an exceptional condition and poll(2)
+    // indicates a POLLPRI event."
+
+    // "Address formats" section of https://www.man7.org/linux/man-pages/man7/tcp.7.html
+    // TCP is built on top of IP (see ip(7)). The address formats
+    // defined by ip(7) apply to TCP. TCP supports point-to-point
+    // communication only; broadcasting and multicasting are not
+    // supported.
+
+    // "DESCRIPTION" section of https://www.man7.org/linux/man-pages/man7/udp.7.html
+    // "When a UDP socket is created, its local and remote addresses are
+    // unspecified. Datagrams can be sent immediately using sendto(2) or
+    // sendmsg(2) with a valid destination address as an argument. When
+    // connect(2) is called on the socket, the default destination
+    // address is set and datagrams can now be sent using send(2) or
+    // write(2) without specifying a destination address. It is still
+    // possible to send to other destinations by passing an address to
+    // sendto(2) or sendmsg(2). In order to receive packets, the socket
+    // can be bound to a local address first by using bind(2).
+    // Otherwise, the socket layer will automatically assign a free local
+    // port out of the range defined by
+    // /proc/sys/net/ipv4/ip_local_port_range and bind the socket to
+    // INADDR_ANY."
+
+    // TODO More socket options:
+    // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
+    // https://www.man7.org/linux/man-pages/man7/ipv6.7.html
+
     // https://www.man7.org/linux/man-pages/man0/sys_uio.h.0p.html
     // https://www.man7.org/linux/man-pages/man2/readv.2.html
     // https://www.man7.org/linux/man-pages/man3/readv.3p.html
@@ -62,10 +333,6 @@ namespace cpp_sockets
     // https://www.man7.org/linux/man-pages/man2/writev.2.html
     // https://www.man7.org/linux/man-pages/man3/writev.3p.html
     // ASSERT_IS_FUNCTION(writev);
-
-    // https://www.man7.org/linux/man-pages/man0/netinet_tcp.h.0p.html
-    // Can be "a socket option at the IPPROTO_TCP level"
-    DECLARE_CONSTANT_ALIAS(TCP_NODELAY);
 
     // https://www.man7.org/linux/man-pages/man0/arpa_inet.h.0p.html
     // https://www.man7.org/linux/man-pages/man3/htonl.3.html
@@ -140,11 +407,11 @@ namespace cpp_sockets
     ASSERT_IS_CLASS(ipv6_mreq);
 
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
-    void s_in6_addr_2()
-    {
-        const in6_addr x_in6addr_any = IN6ADDR_ANY_INIT;
-        const in6_addr x_in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
-    }
+    // void s_in6_addr_2()
+    // {
+    //     const in6_addr x_in6addr_any = IN6ADDR_ANY_INIT;
+    //     const in6_addr x_in6addr_loopback = IN6ADDR_LOOPBACK_INIT;
+    // }
 
     // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
     // Can be the `level` value for `getsockopt()` and `setsockopt()`
@@ -377,10 +644,15 @@ namespace cpp_sockets
     DECLARE_CONSTANT_ALIAS(SOCK_SEQPACKET);
     DECLARE_CONSTANT_ALIAS(SOCK_STREAM);
 
+    // https://www.man7.org/linux/man-pages/man3/sendmsg.3p.html
+    // https://www.man7.org/linux/man-pages/man3/sendto.3p.html
+    // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    // Can be the `option_name` value for `getsockopt()` and `setsockopt()`
+    DECLARE_CONSTANT_ALIAS(SO_BROADCAST);
+
     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
     // Can be the `option_name` value for `getsockopt()` and `setsockopt()`
     DECLARE_CONSTANT_ALIAS(SO_ACCEPTCONN);
-    DECLARE_CONSTANT_ALIAS(SO_BROADCAST);
     DECLARE_CONSTANT_ALIAS(SO_DEBUG);
     DECLARE_CONSTANT_ALIAS(SO_DONTROUTE);
     DECLARE_CONSTANT_ALIAS(SO_ERROR);
@@ -426,30 +698,27 @@ namespace cpp_sockets
     DECLARE_CONSTANT_ALIAS(SHUT_RDWR);
     DECLARE_CONSTANT_ALIAS(SHUT_WR);
 
-    void s_msghdr_cmsghdr()
-    {
-        // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
-        // https://en.cppreference.com/w/cpp/language/zero_initialization
-        // https://en.cppreference.com/w/cpp/language/default_initialization
-        // https://www.man7.org/linux/man-pages/man3/cmsg.3.html
-        msghdr mhdr = {0};
-        cmsghdr cmsg = {0};
-
-        // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
-        // https://www.man7.org/linux/man-pages/man3/CMSG_DATA.3.html
-        // https://www.man7.org/linux/man-pages/man3/cmsg_data.3.html
-        auto cmsg_data = CMSG_DATA(&cmsg);
-
-        // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
-        // https://www.man7.org/linux/man-pages/man3/CMSG_NXTHDR.3.html
-        // https://www.man7.org/linux/man-pages/man3/cmsg_nxthdr.3.html
-        auto cmsg_nxthdr = CMSG_NXTHDR(&mhdr, &cmsg);
-
-        // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
-        // https://www.man7.org/linux/man-pages/man3/CMSG_FIRSTHDR.3.html
-        // https://www.man7.org/linux/man-pages/man3/cmsg_firsthdr.3.html
-        auto cmsg_firsthdr = CMSG_FIRSTHDR(&mhdr);
-    }
+    // void s_msghdr_cmsghdr()
+    // {
+    //     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    //     // https://en.cppreference.com/w/cpp/language/zero_initialization
+    //     // https://en.cppreference.com/w/cpp/language/default_initialization
+    //     // https://www.man7.org/linux/man-pages/man3/cmsg.3.html
+    //     msghdr mhdr = {0};
+    //     cmsghdr cmsg = {0};
+    //     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    //     // https://www.man7.org/linux/man-pages/man3/CMSG_DATA.3.html
+    //     // https://www.man7.org/linux/man-pages/man3/cmsg_data.3.html
+    //     auto cmsg_data = CMSG_DATA(&cmsg);
+    //     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    //     // https://www.man7.org/linux/man-pages/man3/CMSG_NXTHDR.3.html
+    //     // https://www.man7.org/linux/man-pages/man3/cmsg_nxthdr.3.html
+    //     auto cmsg_nxthdr = CMSG_NXTHDR(&mhdr, &cmsg);
+    //     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
+    //     // https://www.man7.org/linux/man-pages/man3/CMSG_FIRSTHDR.3.html
+    //     // https://www.man7.org/linux/man-pages/man3/cmsg_firsthdr.3.html
+    //     auto cmsg_firsthdr = CMSG_FIRSTHDR(&mhdr);
+    // }
 
     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
     // https://www.man7.org/linux/man-pages/man2/accept.2.html
@@ -535,7 +804,7 @@ namespace cpp_sockets
     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
     // https://www.man7.org/linux/man-pages/man2/socket.2.html
     // https://www.man7.org/linux/man-pages/man3/socket.3p.html
-    // https://www.man7.org/linux/man-pages/man7/socket.7.html
+    // "Socket options" section of https://www.man7.org/linux/man-pages/man7/socket.7.html
     ASSERT_IS_FUNCTION(socket);
 
     // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
