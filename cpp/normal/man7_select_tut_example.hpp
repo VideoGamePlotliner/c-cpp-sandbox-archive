@@ -20,7 +20,9 @@
 #include <stdexcept>
 #include <cassert>
 
+#ifndef BUF_SIZE_select_tut
 #define BUF_SIZE_select_tut 1024
+#endif // BUF_SIZE_select_tut
 
 // Curious about byte orders? Then refer to:
 // https://www.man7.org/linux/man-pages/man0/netinet_in.h.0p.html
@@ -34,8 +36,8 @@
 class man7_select_tut_example
 {
 private:
-    static const int MAX_NUM_LOOPS = 10;
-    static const int SELECT_TIMEOUT_IN_SECONDS = 2;
+    static const int MAX_NUM_LOOPS = 3;
+    static const int SELECT_TIMEOUT_IN_SECONDS = 1;
 
 private:
     int forward_port = 0;
@@ -201,19 +203,10 @@ private:
 
     // https://www.man7.org/linux/man-pages/man2/write.2.html
     // https://www.man7.org/linux/man-pages/man3/write.3p.html
+    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
     // Output the string atomically, and don't change errno.
     // Based on man7_inet_pton_example::write_inet_ntop_results()
     static void write_inet_aton_results(const std::string &name_of_calling_function, const std::string &addr_str, bool failure, int errnum)
-    {
-        const int errnum_2 = errno;
-        man7_connection::write_str(inet_aton_results_str(name_of_calling_function, addr_str, failure, errnum));
-        errno = errnum_2;
-    }
-
-    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
-    // Based on man7_inet_pton_example::inet_ntop_results_str()
-    // Don't change errno.
-    static std::string inet_aton_results_str(const std::string &name_of_calling_function, const std::string &addr_str, bool failure, int errnum)
     {
         const int errnum_2 = errno;
         std::string s;
@@ -235,8 +228,8 @@ private:
         s += strerror(errnum);
         s += '\"';
 #endif // _GNU_SOURCE
+        man7_connection::write_str(s);
         errno = errnum_2;
-        return s;
     }
 
 private:
@@ -258,7 +251,7 @@ private:
         errno = 0;
         const int sigaction_result = sigaction(signum, &newact, &oldact);
         errnum = errno;
-        man7_connection::write_function_results(__func__, "sigaction", sigaction_result, errnum);
+        write_sigaction_function_results(__func__, "sigaction", signum, sigaction_result, errnum);
 
         return sigaction_result;
     }
@@ -267,24 +260,12 @@ private:
     // TODO While I'm at it, centralize duplicate code related to strerror and strsignal.
     // TODO Beware thread-unsafe strsignal
 
-    // According to https://www.man7.org/linux/man-pages/man2/signal.2.html, don't use signal(SIGPIPE, SIG_IGN);
-    // https://www.man7.org/linux/man-pages/man2/sigaction.2.html
-    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
-    // https://www.man7.org/linux/man-pages/man3/strsignal.3.html
-    // Based on man7_connection::close_without_changing_errno()
-    // Don't change errno.
-    static void revert_sigaction(const std::string &name_of_calling_function, int signum, const struct sigaction &oldact)
+    // Based on man7_getaddrinfo_example::write_getinfo_results()
+    // Output the string atomically, and don't change errno.
+    static void write_sigaction_function_results(const std::string &name_of_calling_function, const std::string &name_of_function_called, int signum, int return_value, int errnum)
     {
         const int errnum_2 = errno;
-
-        int errnum = 0;
-        errno = 0;
-        const int sigaction_result = sigaction(signum, &oldact, NULL);
-        errnum = errno;
-
-        std::string s(name_of_calling_function);
-        s += " called ";
-        s += __func__;
+        std::string s(name_of_function_called);
         s += " -- signum is ";
         s += std::to_string(signum);
 
@@ -305,24 +286,30 @@ private:
         }
 #endif // _GNU_SOURCE
 
-        s += " -- sigaction_result is ";
-        s += std::to_string(sigaction_result);
-        s += " -- errnum is ";
-        s += std::to_string(errnum);
+        man7_connection::write_function_results(name_of_calling_function, s, return_value, errnum);
+        errno = errnum_2;
+    }
 
-#ifdef _GNU_SOURCE
-        s += ", whose name is \"";
-        s += strerrorname_np(errnum);
-        s += "\" and whose desc is \"";
-        s += strerrordesc_np(errnum);
-        s += '\"';
-#else
-        s += ", which means \"";
-        s += strerror(errnum);
-        s += '\"';
-#endif // _GNU_SOURCE
+    // TODO What if strerror or strerrorname_np or strerrordesc_np or strsignal or sigdescr_np or sigabbrev_np returns NULL?
+    // TODO While I'm at it, centralize duplicate code related to strerror and strsignal.
+    // TODO Beware thread-unsafe strsignal
 
-        man7_connection::write_str(s);
+    // According to https://www.man7.org/linux/man-pages/man2/signal.2.html, don't use signal(SIGPIPE, SIG_IGN);
+    // https://www.man7.org/linux/man-pages/man2/sigaction.2.html
+    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
+    // https://www.man7.org/linux/man-pages/man3/strsignal.3.html
+    // Based on man7_connection::close_without_changing_errno()
+    // Don't change errno.
+    static void revert_sigaction(const std::string &name_of_calling_function, int signum, const struct sigaction &oldact)
+    {
+        const int errnum_2 = errno;
+
+        int errnum = 0;
+        errno = 0;
+        const int sigaction_result = sigaction(signum, &oldact, NULL);
+        errnum = errno;
+        write_sigaction_function_results(__func__, "sigaction", signum, sigaction_result, errnum);
+        write_sigaction_function_results(name_of_calling_function, __func__, signum, sigaction_result, errnum);
 
         errno = errnum_2;
     }
@@ -443,11 +430,11 @@ public:
         // https://www.man7.org/linux/man-pages/man2/sigaction.2.html
         struct sigaction oldact_SIGPIPE = {0};
         errno = 0;
-        const int signal_result = change_sigaction(SIGPIPE, oldact_SIGPIPE);
+        const int change_sigaction_result = change_sigaction(SIGPIPE, oldact_SIGPIPE);
         errnum = errno;
-        man7_connection::write_function_results(__func__, "change_sigaction", signal_result, errnum);
+        write_sigaction_function_results(__func__, "change_sigaction", SIGPIPE, change_sigaction_result, errnum);
 
-        if (signal_result == -1)
+        if (change_sigaction_result == -1)
         {
             return 7;
         }
@@ -568,7 +555,7 @@ public:
                 errno = 0;
                 nbytes = recv(fd1, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/recv.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("recv (fd1)", fd1), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "recv (fd1)", fd1, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -577,7 +564,7 @@ public:
                     errno = 0;
                     const ssize_t send_result = send(fd2, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/send.2.html
                     errnum = errno;
-                    man7_connection::write_function_results(__func__, fd_str("send (fd2)", fd2), ((int)send_result), errnum);
+                    write_function_results_with_fd_str(__func__, "send (fd2)", fd2, ((int)send_result), errnum);
                 }
             }
             if (fd2 > 0 && FD_ISSET(fd2, &exceptfds))
@@ -587,7 +574,7 @@ public:
                 errno = 0;
                 nbytes = recv(fd2, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/recv.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("recv (fd2)", fd2), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "recv (fd2)", fd2, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -596,7 +583,7 @@ public:
                     errno = 0;
                     const ssize_t send_result = send(fd1, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/send.2.html
                     errnum = errno;
-                    man7_connection::write_function_results(__func__, fd_str("send (fd1)", fd1), ((int)send_result), errnum);
+                    write_function_results_with_fd_str(__func__, "send (fd1)", fd1, ((int)send_result), errnum);
                 }
             }
             if (fd1 > 0 && FD_ISSET(fd1, &readfds))
@@ -604,7 +591,7 @@ public:
                 errno = 0;
                 nbytes = read(fd1, buf1 + buf1_avail, BUF_SIZE_select_tut - buf1_avail); // https://www.man7.org/linux/man-pages/man2/read.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("read (fd1)", fd1), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "read (fd1)", fd1, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -616,7 +603,7 @@ public:
                 errno = 0;
                 nbytes = read(fd2, buf2 + buf2_avail, BUF_SIZE_select_tut - buf2_avail); // https://www.man7.org/linux/man-pages/man2/read.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("read (fd2)", fd2), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "read (fd2)", fd2, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -628,7 +615,7 @@ public:
                 errno = 0;
                 nbytes = write(fd1, buf2 + buf2_written, buf2_avail - buf2_written); // https://www.man7.org/linux/man-pages/man2/write.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("write (fd1)", fd1), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "write (fd1)", fd1, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -640,7 +627,7 @@ public:
                 errno = 0;
                 nbytes = write(fd2, buf1 + buf1_written, buf1_avail - buf1_written); // https://www.man7.org/linux/man-pages/man2/write.2.html
                 errnum = errno;
-                man7_connection::write_function_results(__func__, fd_str("write (fd2)", fd2), ((int)nbytes), errnum);
+                write_function_results_with_fd_str(__func__, "write (fd2)", fd2, ((int)nbytes), errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -691,13 +678,15 @@ private:
         errno = errnum;
     }
 
-    // Don't change errno.
-    static std::string fd_str(const std::string &string_containing_name_of_function_called, int fd)
+    // Output the string atomically, and don't change errno.
+    static void write_function_results_with_fd_str(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, int fd, int return_value, int errnum)
     {
+        const int errnum_2 = errno;
         std::string s(string_containing_name_of_function_called);
         s += " -- fd is ";
         s += std::to_string(fd);
-        return s;
+        man7_connection::write_function_results(name_of_calling_function, s, return_value, errnum);
+        errno = errnum_2;
     }
 };
 

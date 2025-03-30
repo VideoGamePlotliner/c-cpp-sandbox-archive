@@ -49,7 +49,7 @@ At the time, Visual Studio Code reported the following problems:
 
 ![A screenshot listing those problems](screenshots/visual-studio-code/visual-studio-code-problems-struct-addrinfo.png)
 
-After digging around my WSL2 distro (currently "Ubuntu 24.04.1 LTS" according to the command line instruction `lsb_release -a`), I have found two relevant `.h` files (`/usr/include/features.h` and `/usr/include/netdb.h`) and one relevant webpage (https://www.man7.org/linux/man-pages/man7/feature_test_macros.7.html). Thanks to the code in those `.h` files and to the information on that webpage, I have decided to prepend the following code block to [`getaddrinfo_example_client.c`](c/copied/man7/getaddrinfo_example_client.c) and [`getaddrinfo_example_server.c`](c/copied/man7/getaddrinfo_example_server.c) in order to get rid of those red squiggly lines:
+After digging around my WSL2 distro (which was "Ubuntu 24.04.1 LTS" at the time, according to the command line instruction `lsb_release -a`), I found two relevant `.h` files (`/usr/include/features.h` and `/usr/include/netdb.h`) and one relevant webpage (https://www.man7.org/linux/man-pages/man7/feature_test_macros.7.html). Thanks to the code in those `.h` files and to the information on that webpage, I decided to prepend the following code block to [`getaddrinfo_example_client.c`](c/copied/man7/getaddrinfo_example_client.c) and [`getaddrinfo_example_server.c`](c/copied/man7/getaddrinfo_example_server.c) in order to get rid of those red squiggly lines:
 
 ```c
 // /usr/include/features.h

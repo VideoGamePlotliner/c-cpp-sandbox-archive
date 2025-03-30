@@ -1,15 +1,14 @@
 #ifndef SANDBOX_CPP_TRIE
 #define SANDBOX_CPP_TRIE
 
+#include "../gen/output/cpp_gen_trie.hpp"
 #include <vector>
 #include <string>
-#include <set>
 #include <map>
 #include <stdexcept>
 #include <iostream>
 #include <cassert>
 #include <utility>
-#include "../gen/output/cpp_gen_trie.hpp"
 
 //
 //

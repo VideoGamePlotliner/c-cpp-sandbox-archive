@@ -1,18 +1,10 @@
 #ifndef SANDBOX_CPP_MAN7_GETADDRINFO_EXAMPLE_SERVER
 #define SANDBOX_CPP_MAN7_GETADDRINFO_EXAMPLE_SERVER
 
-// /usr/include/features.h
-// /usr/include/netdb.h
-// https://www.man7.org/linux/man-pages/man7/feature_test_macros.7.html
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif // _GNU_SOURCE
-
 // Adapted from "Server program" section of https://www.man7.org/linux/man-pages/man3/getaddrinfo.3.html
 
-#include "man7_connection.hpp"
+#include "man7_getaddrinfo_example.hpp"
 #include "cpp_sockets.hpp"
-#include "man7_getaddrinfo_example_client.hpp"
 
 #include <netdb.h>
 #include <stdio.h>
@@ -24,10 +16,6 @@
 #include <cerrno>
 #include <string>
 #include <sys/time.h>
-
-#ifndef BUF_SIZE_getaddrinfo
-#define BUF_SIZE_getaddrinfo 500
-#endif // BUF_SIZE_getaddrinfo
 
 class man7_getaddrinfo_example_server
 {
@@ -98,7 +86,7 @@ public:
         errno = 0;
         getinfo_result = getaddrinfo(NULL, argv[1], &hints, &result);
         errnum = errno;
-        man7_getaddrinfo_example_client::write_getinfo_results(__func__, "getaddrinfo", getinfo_result, errnum);
+        man7_getaddrinfo_example::write_getinfo_results(__func__, "getaddrinfo", getinfo_result, errnum);
 
         if (getinfo_result)
         {
@@ -262,7 +250,7 @@ public:
             errno = 0;
             getinfo_result = getnameinfo((const sockaddr *)&peer_addr, peer_addrlen, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV); // https://www.man7.org/linux/man-pages/man3/getnameinfo.3.html
             errnum = errno;
-            man7_getaddrinfo_example_client::write_getinfo_results(__func__, "getnameinfo", getinfo_result, errnum);
+            man7_getaddrinfo_example::write_getinfo_results(__func__, "getnameinfo", getinfo_result, errnum);
             host[sizeof(host) - 1] = 0;
             service[sizeof(service) - 1] = 0;
 
