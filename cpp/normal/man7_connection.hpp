@@ -12,49 +12,6 @@
 
 class man7_connection
 {
-private:
-    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
-    // Don't change errno.
-    static std::string function_results_str(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, int return_value, int errnum)
-    {
-        const int errnum_2 = errno;
-        std::string s;
-        s += name_of_calling_function;
-        s += " called ";
-        s += string_containing_name_of_function_called;
-        s += " -- return_value is ";
-        s += std::to_string(return_value);
-        s += " -- errnum is ";
-        s += std::to_string(errnum);
-#ifdef _GNU_SOURCE
-        s += ", whose name is \"";
-        s += strerrorname_np(errnum);
-        s += "\" and whose desc is \"";
-        s += strerrordesc_np(errnum);
-        s += '\"';
-#else
-        s += ", which means \"";
-        s += strerror(errnum);
-        s += '\"';
-#endif // _GNU_SOURCE
-        errno = errnum_2;
-        return s;
-    }
-
-    // Typically, str is solely comprised of one or more sentences.
-    // Don't change errno.
-    static std::string num_tries_left_str(const std::string &str, int num_tries_left)
-    {
-        const int errnum = errno;
-        std::string s;
-        s += str;
-        s += " (Number of tries left is ";
-        s += std::to_string(num_tries_left);
-        s += ".)";
-        errno = errnum;
-        return s;
-    }
-
 public:
     // https://www.man7.org/linux/man-pages/man2/write.2.html
     // https://www.man7.org/linux/man-pages/man3/write.3p.html
@@ -72,13 +29,32 @@ public:
         errno = errnum;
     }
 
+    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
     // https://www.man7.org/linux/man-pages/man2/write.2.html
     // https://www.man7.org/linux/man-pages/man3/write.3p.html
     // Output the string atomically, and don't change errno.
     static void write_function_results(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, int return_value, int errnum)
     {
         const int errnum_2 = errno;
-        write_str(function_results_str(name_of_calling_function, string_containing_name_of_function_called, return_value, errnum));
+        std::string s(name_of_calling_function);
+        s += " called ";
+        s += string_containing_name_of_function_called;
+        s += " -- return_value is ";
+        s += std::to_string(return_value);
+        s += " -- errnum is ";
+        s += std::to_string(errnum);
+#ifdef _GNU_SOURCE
+        s += ", whose name is \"";
+        s += strerrorname_np(errnum);
+        s += "\" and whose desc is \"";
+        s += strerrordesc_np(errnum);
+        s += '\"';
+#else
+        s += ", which means \"";
+        s += strerror(errnum);
+        s += '\"';
+#endif // _GNU_SOURCE
+        write_str(s);
         errno = errnum_2;
     }
 
@@ -106,7 +82,11 @@ public:
     static void write_num_tries_left(const std::string &str, int num_tries_left)
     {
         const int errnum = errno;
-        write_str(num_tries_left_str(str, num_tries_left));
+        std::string s(str);
+        s += " (Number of tries left is ";
+        s += std::to_string(num_tries_left);
+        s += ".)";
+        write_str(s);
         errno = errnum;
     }
     

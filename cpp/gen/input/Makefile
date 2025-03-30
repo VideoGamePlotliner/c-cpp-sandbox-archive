@@ -8,7 +8,10 @@ all: cpp_gen_main
 
 cpp_gen_main: cpp_gen_main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $+
-	mkdir -p ../output
+# https://www.gnu.org/software/make/manual/make.html#Utilities-in-Makefiles
+# Avoid using '-p' with 'mkdir'.
+# https://www.gnu.org/software/make/manual/make.html#Errors
+	-mkdir ../output
 	./$@ > ../output/cpp_gen_trie.hpp
 
 cpp_gen_main.o:

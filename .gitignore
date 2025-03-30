@@ -11,10 +11,24 @@
 /c/copied/man7/select_tut_example
 /c/normal/c_main
 /cpp/gen/input/cpp_gen_main
-/cpp/normal/cpp_main
+/cpp/normal/cpp_apportionment_test_main
+/cpp/normal/cpp_args_test_main
+/cpp/normal/cpp_assert_test_main
+/cpp/normal/cpp_gen_trie_test_main
+/cpp/normal/cpp_protoent_test_main
+/cpp/normal/cpp_sockets_test_main
+/cpp/normal/cpp_trie_test_main
+/cpp/normal/man7_getaddrinfo_example_test_main
+/cpp/normal/man7_inet_pton_example_test_main
+/cpp/normal/man7_select_tut_example_test_main
+/cpp/normal/man7_sendmmsg_example_test_main
+/cpp/normal/man7_test_main
 
 # Exclude all .o files
 *.o
+
+# Exclude all .d files
+*.d
 
 # Exclude these directories
 /cpp/gen/output

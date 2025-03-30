@@ -1,16 +1,9 @@
 #ifndef SANDBOX_CPP_MAN7_GETADDRINFO_EXAMPLE_CLIENT
 #define SANDBOX_CPP_MAN7_GETADDRINFO_EXAMPLE_CLIENT
 
-// /usr/include/features.h
-// /usr/include/netdb.h
-// https://www.man7.org/linux/man-pages/man7/feature_test_macros.7.html
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif // _GNU_SOURCE
-
 // Adapted from "Client program" section of https://www.man7.org/linux/man-pages/man3/getaddrinfo.3.html
 
-#include "man7_connection.hpp"
+#include "man7_getaddrinfo_example.hpp"
 #include "cpp_sockets.hpp"
 
 #include <netdb.h>
@@ -22,10 +15,6 @@
 #include <unistd.h>
 #include <cerrno>
 #include <string>
-
-#ifndef BUF_SIZE_getaddrinfo
-#define BUF_SIZE_getaddrinfo 500
-#endif // BUF_SIZE_getaddrinfo
 
 class man7_getaddrinfo_example_client
 {
@@ -105,7 +94,7 @@ public:
         errno = 0;
         getaddrinfo_result = getaddrinfo(argv[1], argv[2], &hints, &result);
         errnum = errno;
-        write_getinfo_results(__func__, "getaddrinfo", getaddrinfo_result, errnum);
+        man7_getaddrinfo_example::write_getinfo_results(__func__, "getaddrinfo", getaddrinfo_result, errnum);
 
         if (getaddrinfo_result)
         {
@@ -283,80 +272,6 @@ private:
         s += " host port msg...";
         man7_connection::write_str(s);
         errno = errnum;
-    }
-
-public:
-    // https://www.man7.org/linux/man-pages/man2/write.2.html
-    // https://www.man7.org/linux/man-pages/man3/write.3p.html
-    // Output the string atomically, and don't change errno.
-    // Based on man7_connection::write_function_results()
-    static void write_getinfo_results(const std::string &name_of_calling_function, const std::string &name_of_function_called, int return_value, int errnum)
-    {
-        const int errnum_2 = errno;
-        man7_connection::write_function_results(name_of_calling_function, getinfo_results_str(name_of_function_called, return_value), return_value, errnum);
-        errno = errnum_2;
-    }
-
-private:
-    // https://www.man7.org/linux/man-pages/man3/strerror.3.html
-    // Based on man7_connection::function_results_str()
-    // Don't change errno.
-    static std::string getinfo_results_str(const std::string &name_of_function_called, int getaddrinfo_return_value)
-    {
-        const int errnum = errno;
-        std::string s(name_of_function_called);
-        s += " -- return_value is ";
-
-        // "RETURN VALUE" section of https://www.man7.org/linux/man-pages/man3/getaddrinfo.3.html
-        // "RETURN VALUE" section of https://www.man7.org/linux/man-pages/man3/getnameinfo.3.html
-        switch (getaddrinfo_return_value)
-        {
-        case EAI_ADDRFAMILY:
-            s += "EAI_ADDRFAMILY";
-            break;
-        case EAI_AGAIN:
-            s += "EAI_AGAIN";
-            break;
-        case EAI_BADFLAGS:
-            s += "EAI_BADFLAGS";
-            break;
-        case EAI_FAIL:
-            s += "EAI_FAIL";
-            break;
-        case EAI_FAMILY:
-            s += "EAI_FAMILY";
-            break;
-        case EAI_MEMORY:
-            s += "EAI_MEMORY";
-            break;
-        case EAI_NODATA:
-            s += "EAI_NODATA";
-            break;
-        case EAI_NONAME:
-            s += "EAI_NONAME";
-            break;
-        case EAI_OVERFLOW:
-            s += "EAI_OVERFLOW";
-            break;
-        case EAI_SERVICE:
-            s += "EAI_SERVICE";
-            break;
-        case EAI_SOCKTYPE:
-            s += "EAI_SOCKTYPE";
-            break;
-        case EAI_SYSTEM:
-            s += "EAI_SYSTEM";
-            break;
-        default:
-            s += std::to_string(getaddrinfo_return_value);
-            break;
-        }
-
-        s += ", which means \"";
-        s += gai_strerror(getaddrinfo_return_value);
-        s += '\"';
-        errno = errnum;
-        return s;
     }
 };
 

@@ -19,41 +19,31 @@
 class man7_client
 {
 private:
-    // Don't change errno.
-    static std::string client_buffer_str(const std::string &buffer)
-    {
-        const int errnum = errno;
-        std::string s;
-        s += "Result = ";
-        s += buffer;
-        errno = errnum;
-        return s;
-    }
-
-    // Don't change errno.
-    static std::string argv_str(int argc, const char *argv[], int i)
-    {
-        const int errnum = errno;
-        std::string s;
-        s += "write (argc is ";
-        s += std::to_string(argc);
-        s += " and argv[";
-        s += std::to_string(i);
-        s += "] is \"";
-        s += argv[i];
-        s += "\")";
-        errno = errnum;
-        return s;
-    }
-
     // https://www.man7.org/linux/man-pages/man2/write.2.html
     // https://www.man7.org/linux/man-pages/man3/write.3p.html
     // Output the string atomically, and don't change errno.
     static void write_client_buffer(const std::string &buffer)
     {
         const int errnum = errno;
-        man7_connection::write_str(client_buffer_str(buffer));
+        std::string s("Result = ");
+        s += buffer;
+        man7_connection::write_str(s);
         errno = errnum;
+    }
+
+    // Output the string atomically, and don't change errno.
+    static void write_argv_str(const std::string &name_of_calling_function, int argc, const char *argv[], int i, ssize_t w, int errnum)
+    {
+        const int errnum_2 = errno;
+        std::string s("write (argc is ");
+        s += std::to_string(argc);
+        s += " and argv[";
+        s += std::to_string(i);
+        s += "] is \"";
+        s += argv[i];
+        s += "\")";
+        man7_connection::write_function_results(name_of_calling_function, s, (int)w, errnum);
+        errno = errnum_2;
     }
 
 public:
@@ -152,7 +142,7 @@ public:
             errno = 0;
             w = write(data_socket, argv[i], strlen(argv[i]) + 1);
             errnum = errno;
-            man7_connection::write_function_results(__func__, argv_str(argc, argv, i), w, errnum);
+            write_argv_str(__func__, argc, argv, i, w, errnum);
 
             if (w == -1)
             {

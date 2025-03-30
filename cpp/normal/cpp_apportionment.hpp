@@ -566,6 +566,21 @@ public:
             std::cout << total_num_reps << '\t' << max_over_min << '\t' << max_over_avg << '\t' << avg_over_min << '\n';
         }
     }
+
+    static void test_this_class_part_5()
+    {
+        std::cout << "\n\n\n";
+        
+        // Table A-5 in https://crsreports.congress.gov/product/pdf/R/R45951
+        std::map<N, P> the_population_for_each_state{{"A", 2560}, {"B", 3315}, {"C", 995}, {"D", 5012}};
+        apportionment a(the_population_for_each_state);
+        M m1(a.num_reps_for_each_state(20));
+        M m2{{"A", 4}, {"B", 6}, {"C", 2}, {"D", 8}};
+
+        operator_os(std::cout << '\n', m1) << '\n';
+        operator_os(std::cout << '\n', m2) << '\n';
+        assert(m1 == m2);
+    }
 };
 
 #endif // SANDBOX_CPP_APPORTIONMENT

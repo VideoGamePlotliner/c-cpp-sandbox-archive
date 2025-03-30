@@ -1,9 +1,8 @@
 #ifndef SANDBOX_CPP_SOCKETS
 #define SANDBOX_CPP_SOCKETS
 
-#include <cerrno>
 #include "cpp_assert.hpp"
-#include "cpp_alias.hpp"
+#include <cerrno>
 
 // https://www.man7.org/linux/man-pages/man0/sys_socket.h.0p.html
 #include <sys/socket.h>
@@ -35,6 +34,12 @@
 // https://www.man7.org/linux/man-pages/man0/sys_un.h.0p.html
 #include <sys/un.h>
 
+// https://en.cppreference.com/w/cpp/preprocessor/replace
+// https://en.cppreference.com/w/cpp/language/namespace_alias
+// https://en.cppreference.com/w/cpp/language/type_alias
+// https://en.cppreference.com/w/cpp/language/constexpr
+#define DECLARE_CONSTANT_ALIAS(name) constexpr auto const c_##name = name
+
 // https://www.man7.org/linux/man-pages/man0/fcntl.h.0p.html
 // https://www.man7.org/linux/man-pages/man2/fcntl.2.html
 // https://www.man7.org/linux/man-pages/man3/fcntl.3p.html
@@ -62,15 +67,14 @@
 
 // TODO IOCTL
 
-// TODO De-couple
-
 // TODO What if strerror or strerrorname_np or strerrordesc_np or strsignal or sigdescr_np or sigabbrev_np returns NULL?
 // TODO While I'm at it, centralize duplicate code related to strerror and strsignal.
 // TODO Beware thread-unsafe strsignal
 // TODO Handle any instance of 's += NULL;'
 // TODO Handle any instance of 'std::string s(NULL);'
-
-// TODO "EXAMPLES" section of https://www.man7.org/linux/man-pages/man2/select_tut.2.html
+// TODO Collapse 'std::string s; s += "abc";' into 'std::string s("abc");'
+// TODO Make CHAR_TO_STRING_LITERAL_WITHOUT_SINGLE_QUOTES(c)
+// TODO Make sure that __func__ is used correctly
 
 // https://www.man7.org/linux/man-pages/dir_all_alphabetic.html
 
