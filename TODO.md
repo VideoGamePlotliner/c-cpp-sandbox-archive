@@ -200,6 +200,11 @@ The following task is listed in the screenshot below:
 
 # Medium-priority tasks
 
+## Add `man7_*::write_function_results_ssize_t()` functions
+- [x] Create and use a new function called `man7_connection::write_function_results_with_ssize_t()`
+- [x] Change type of `return_value` in `man7_select_tut_example::write_function_results_with_fd_str()` from `int` to `ssize_t`
+- [x] Change name of `man7_select_tut_example::write_function_results_with_fd_str()` to `man7_select_tut_example::write_function_results_with_fd_str_and_ssize_t()`
+
 ## Add steps to [workflow file(s)](.github/workflows/)
 - [ ] Make sure that [this new YML file](.github/workflows/c-cpp.yml) has steps that run this repo's executable files after running `make` and before running `make clean`
 
