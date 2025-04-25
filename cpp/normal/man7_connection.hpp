@@ -58,6 +58,33 @@ public:
         errno = errnum_2;
     }
 
+    // Output the string atomically, and don't change errno.
+    // Based on man7_connection::write_function_results()
+    static void write_function_results_with_ssize_t(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, ssize_t return_value, int errnum)
+    {
+        const int errnum_2 = errno;
+        std::string s(name_of_calling_function);
+        s += " called ";
+        s += string_containing_name_of_function_called;
+        s += " -- return_value is ";
+        s += std::to_string(return_value);
+        s += " -- errnum is ";
+        s += std::to_string(errnum);
+#ifdef _GNU_SOURCE
+        s += ", whose name is \"";
+        s += strerrorname_np(errnum);
+        s += "\" and whose desc is \"";
+        s += strerrordesc_np(errnum);
+        s += '\"';
+#else
+        s += ", which means \"";
+        s += strerror(errnum);
+        s += '\"';
+#endif // _GNU_SOURCE
+        write_str(s);
+        errno = errnum_2;
+    }
+
     // https://www.man7.org/linux/man-pages/man0/unistd.h.0p.html
     // https://www.man7.org/linux/man-pages/man2/close.2.html
     // https://www.man7.org/linux/man-pages/man3/close.3p.html
@@ -89,7 +116,7 @@ public:
         write_str(s);
         errno = errnum;
     }
-    
+
     // Output the string atomically, and don't change errno.
     static void write_loop_variable(int i)
     {

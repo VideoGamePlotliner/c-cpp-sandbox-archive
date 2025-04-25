@@ -42,7 +42,7 @@ private:
         s += "] is \"";
         s += argv[i];
         s += "\")";
-        man7_connection::write_function_results(name_of_calling_function, s, (int)w, errnum);
+        man7_connection::write_function_results_with_ssize_t(name_of_calling_function, s, w, errnum);
         errno = errnum_2;
     }
 

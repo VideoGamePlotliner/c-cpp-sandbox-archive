@@ -555,7 +555,7 @@ public:
                 errno = 0;
                 nbytes = recv(fd1, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/recv.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "recv (fd1)", fd1, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "recv (fd1)", fd1, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -564,7 +564,7 @@ public:
                     errno = 0;
                     const ssize_t send_result = send(fd2, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/send.2.html
                     errnum = errno;
-                    write_function_results_with_fd_str(__func__, "send (fd2)", fd2, ((int)send_result), errnum);
+                    write_function_results_with_fd_str_and_ssize_t(__func__, "send (fd2)", fd2, send_result, errnum);
                 }
             }
             if (fd2 > 0 && FD_ISSET(fd2, &exceptfds))
@@ -574,7 +574,7 @@ public:
                 errno = 0;
                 nbytes = recv(fd2, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/recv.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "recv (fd2)", fd2, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "recv (fd2)", fd2, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -583,7 +583,7 @@ public:
                     errno = 0;
                     const ssize_t send_result = send(fd1, &c, 1, MSG_OOB); // https://www.man7.org/linux/man-pages/man2/send.2.html
                     errnum = errno;
-                    write_function_results_with_fd_str(__func__, "send (fd1)", fd1, ((int)send_result), errnum);
+                    write_function_results_with_fd_str_and_ssize_t(__func__, "send (fd1)", fd1, send_result, errnum);
                 }
             }
             if (fd1 > 0 && FD_ISSET(fd1, &readfds))
@@ -591,7 +591,7 @@ public:
                 errno = 0;
                 nbytes = read(fd1, buf1 + buf1_avail, BUF_SIZE_select_tut - buf1_avail); // https://www.man7.org/linux/man-pages/man2/read.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "read (fd1)", fd1, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "read (fd1)", fd1, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -603,7 +603,7 @@ public:
                 errno = 0;
                 nbytes = read(fd2, buf2 + buf2_avail, BUF_SIZE_select_tut - buf2_avail); // https://www.man7.org/linux/man-pages/man2/read.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "read (fd2)", fd2, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "read (fd2)", fd2, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -615,7 +615,7 @@ public:
                 errno = 0;
                 nbytes = write(fd1, buf2 + buf2_written, buf2_avail - buf2_written); // https://www.man7.org/linux/man-pages/man2/write.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "write (fd1)", fd1, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "write (fd1)", fd1, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd1);
@@ -627,7 +627,7 @@ public:
                 errno = 0;
                 nbytes = write(fd2, buf1 + buf1_written, buf1_avail - buf1_written); // https://www.man7.org/linux/man-pages/man2/write.2.html
                 errnum = errno;
-                write_function_results_with_fd_str(__func__, "write (fd2)", fd2, ((int)nbytes), errnum);
+                write_function_results_with_fd_str_and_ssize_t(__func__, "write (fd2)", fd2, nbytes, errnum);
 
                 if (nbytes < 1)
                     shut_fd_without_changing_errno(__func__, fd2);
@@ -679,13 +679,13 @@ private:
     }
 
     // Output the string atomically, and don't change errno.
-    static void write_function_results_with_fd_str(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, int fd, int return_value, int errnum)
+    static void write_function_results_with_fd_str_and_ssize_t(const std::string &name_of_calling_function, const std::string &string_containing_name_of_function_called, int fd, ssize_t return_value, int errnum)
     {
         const int errnum_2 = errno;
         std::string s(string_containing_name_of_function_called);
         s += " -- fd is ";
         s += std::to_string(fd);
-        man7_connection::write_function_results(name_of_calling_function, s, return_value, errnum);
+        man7_connection::write_function_results_with_ssize_t(name_of_calling_function, s, return_value, errnum);
         errno = errnum_2;
     }
 };
